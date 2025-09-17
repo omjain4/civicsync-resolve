@@ -65,7 +65,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // MAIN LOGIC: Only allow "resolved" with after image
+  // Only allow "resolved" with after image
   const updateReportStatus = async (reportId: string, newStatus: string, file?: File) => {
     try {
       let data: any = { status: newStatus };
@@ -79,10 +79,7 @@ export default function AdminDashboard() {
       await api.put(`/reports/${reportId}`, data, config);
       queryClient.invalidateQueries({ queryKey: ["allReports"] });
     } catch (error) {
-      alert(
-        "Failed to update report status: " +
-          (error?.response?.data?.message || error.message)
-      );
+      alert("Failed to update report status: " + (error?.response?.data?.message || error.message));
     }
   };
 
@@ -151,12 +148,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
-      <div className="container mx-auto px-4 py-10">
-        {/* Loading overlay for after image */}
+    <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb] w-full">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-10">
+        {/* Loading overlay */}
         {isAfterImageUploading && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
-            <div className="flex flex-col items-center bg-white px-10 py-10 rounded-lg shadow-md">
+            <div className="flex flex-col items-center bg-white px-6 py-8 sm:px-10 sm:py-10 rounded-lg shadow-md w-full max-w-md">
               <Loader2 className="w-12 h-12 animate-spin text-blue-700 mb-4" />
               <div className="text-blue-900 font-semibold text-lg">Uploading After Image…</div>
               <div className="text-blue-800 mt-2">Please wait until the process finishes.</div>
@@ -165,27 +162,28 @@ export default function AdminDashboard() {
         )}
 
         {/* DASH HEADER */}
-        <div className="mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-1 tracking-tight">
+        <div className="mb-7 sm:mb-10">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-900 mb-1 tracking-tight">
             Admin Dashboard
           </h1>
-          <div className="text-lg text-blue-700 font-medium mb-2">
+          <div className="text-base sm:text-lg text-blue-700 font-medium mb-2">
             Review, update, and resolve civic complaints citywide
           </div>
           <hr className="border-blue-100 mb-6" />
         </div>
+
         {/* Stats row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-          <StatCard icon={<FileText className="w-8 h-8 mb-1 text-blue-800" />} value={stats?.total ?? 0} label="Total Reports" />
-          <StatCard icon={<Clock className="w-8 h-8 mb-1 text-yellow-700" />} value={stats?.pending ?? 0} label="Pending" border="border-yellow-200" color="text-yellow-700" />
-          <StatCard icon={<AlertTriangle className="w-8 h-8 mb-1 text-blue-800" />} value={stats?.inProgress ?? 0} label="In Progress" border="border-blue-200" />
-          <StatCard icon={<CheckCircle className="w-8 h-8 mb-1 text-green-700" />} value={stats?.resolved ?? 0} label="Resolved" border="border-green-200" color="text-green-800" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-10">
+          <StatCard icon={<FileText className="w-7 sm:w-8 h-7 sm:h-8 mb-1 text-blue-800" />} value={stats?.total ?? 0} label="Total Reports" />
+          <StatCard icon={<Clock className="w-7 sm:w-8 h-7 sm:h-8 mb-1 text-yellow-700" />} value={stats?.pending ?? 0} label="Pending" border="border-yellow-200" color="text-yellow-700" />
+          <StatCard icon={<AlertTriangle className="w-7 sm:w-8 h-7 sm:h-8 mb-1 text-blue-800" />} value={stats?.inProgress ?? 0} label="In Progress" border="border-blue-200" />
+          <StatCard icon={<CheckCircle className="w-7 sm:w-8 h-7 sm:h-8 mb-1 text-green-700" />} value={stats?.resolved ?? 0} label="Resolved" border="border-green-200" color="text-green-800" />
         </div>
 
         {/* Search/filter */}
-        <Card className="shadow-civic border border-blue-100 mb-10 pt-3">
-          <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pt-3">
-            <div className="flex gap-2 w-full md:w-auto">
+        <Card className="shadow-civic border border-blue-100 mb-6 sm:mb-10 pt-3">
+          <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <Search className="w-5 h-5 text-blue-700" />
                 <Input
@@ -223,183 +221,276 @@ export default function AdminDashboard() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="text-sm text-blue-700 whitespace-nowrap">
+            <div className="text-sm text-blue-700 whitespace-nowrap mt-2 sm:mt-0">
               Showing <span className="font-bold">{filteredReports.length}</span> of&nbsp;
               <span className="font-bold">{reports?.length || 0}</span> reports
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-civic-strong border border-blue-100">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-blue-800 font-semibold text-xl">
-              Civic Issues Management
-            </CardTitle>
-            <CardDescription>
-              Change status/update reports below. Click issue photo to enlarge.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {filteredReports.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-blue-50 text-blue-900 text-base">
-                      <TableHead className="py-3 px-4">Image</TableHead>
-                      <TableHead className="py-3 px-4">Details</TableHead>
-                      <TableHead className="py-3 px-4">Location</TableHead>
-                      <TableHead className="py-3 px-4">Reporter</TableHead>
-                      <TableHead className="py-3 px-4">Date</TableHead>
-                      <TableHead className="py-3 px-4">Status</TableHead>
-                      <TableHead className="py-3 px-4">Priority</TableHead>
-                      <TableHead className="py-3 px-4">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredReports.map(report => (
-                      <TableRow key={report._id} className="hover:bg-blue-50">
-                        {/* Image */}
-                        <TableCell className="py-3 px-4">
-                          {report.imageUrl ? (
-                            <div className="relative w-16 h-16 cursor-pointer"
-                              style={{ margin: "0 auto" }}
-                              onClick={() => setSelectedImage(report.imageUrl!)}
+        {/** DESKTOP TABLE */}
+        <div className="hidden md:block">
+          <Card className="shadow-civic-strong border border-blue-100">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-blue-800 font-semibold text-xl">
+                Civic Issues Management
+              </CardTitle>
+              <CardDescription>
+                Change status/update reports below. Click issue photo to enlarge.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredReports.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-blue-50 text-blue-900 text-base">
+                        <TableHead className="py-3 px-4">Image</TableHead>
+                        <TableHead className="py-3 px-4">Details</TableHead>
+                        <TableHead className="py-3 px-4">Location</TableHead>
+                        <TableHead className="py-3 px-4">Reporter</TableHead>
+                        <TableHead className="py-3 px-4">Date</TableHead>
+                        <TableHead className="py-3 px-4">Status</TableHead>
+                        <TableHead className="py-3 px-4">Priority</TableHead>
+                        <TableHead className="py-3 px-4">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredReports.map(report => (
+                        <TableRow key={report._id} className="hover:bg-blue-50">
+                          {/* Image */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div className="flex flex-col gap-2 items-center">
+                              {report.imageUrl ? (
+                                <div className="relative w-16 h-16 cursor-pointer" onClick={() => setSelectedImage(report.imageUrl!)} style={{ margin: "0 auto" }}>
+                                  <img
+                                    src={report.imageUrl}
+                                    alt="Report"
+                                    className="w-full h-full object-cover border border-blue-200 rounded hover:opacity-80 transition"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition bg-black bg-opacity-50 rounded">
+                                    <Eye className="w-4 h-4 text-white" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 bg-gray-100 border border-blue-100 rounded flex items-center justify-center m-auto">
+                                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                                </div>
+                              )}
+                              {report.afterImageUrl && (
+                                <div className="flex flex-col items-center">
+                                  <span className="text-xs text-green-700 font-semibold">After (Resolved):</span>
+                                  <img
+                                    src={report.afterImageUrl}
+                                    alt="After"
+                                    className="w-16 h-16 object-cover rounded border border-green-200 mt-1"
+                                    onClick={() => setSelectedImage(report.afterImageUrl!)}
+                                    style={{ cursor: "pointer" }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* Details cell */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div>
+                              <div className="font-semibold text-blue-900">{report.title || report.category}</div>
+                              <div className="text-xs text-blue-700">{report.category}</div>
+                              <div className="text-xs text-blue-800 mb-1">{report.description}</div>
+                              {report.severity && (
+                                <div className="text-xs text-blue-700">Severity: Level {report.severity}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* Location */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div>
+                              <div className="flex items-center gap-1 text-xs text-blue-800">
+                                <MapPin className="w-3 h-3" />
+                                {report.address}
+                              </div>
+                              {report.location?.coordinates && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  {report.location.coordinates[1].toFixed(4)}, {report.location.coordinates[0].toFixed(4)}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* Reporter */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div className="text-xs text-blue-900 font-medium">{report.user.email}</div>
+                            {report.user.phone && (
+                              <div className="text-xs text-blue-700">{report.user.phone}</div>
+                            )}
+                          </TableCell>
+                          {/* Date */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div className="flex items-center gap-1 text-xs text-blue-900">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(report.createdAt).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                          {/* Status */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <Select
+                              value={report.status}
+                              onValueChange={value => handleStatusChange(report._id, value)}
+                              disabled={isAfterImageUploading}
                             >
-                              <img
-                                src={report.imageUrl}
-                                alt="Report"
-                                className="w-full h-full object-cover border border-blue-200 rounded hover:opacity-80 transition"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition bg-black bg-opacity-50 rounded">
-                                <Eye className="w-4 h-4 text-white" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-16 h-16 bg-gray-100 border border-blue-100 rounded flex items-center justify-center m-auto">
-                              <ImageIcon className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
-                        </TableCell>
-                        {/* Details cell */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <div>
-                            <div className="font-semibold text-blue-900">{report.title || report.category}</div>
-                            <div className="text-xs text-blue-700">{report.category}</div>
-                            <div className="text-xs text-blue-800 mb-1">{report.description}</div>
-                            {report.severity && (
-                              <div className="text-xs text-blue-700">Severity: Level {report.severity}</div>
-                            )}
-                            {report.afterImageUrl && (
-                              <div className="mt-2">
-                                <span className="text-xs text-green-700 font-semibold">After (Resolved):</span>
-                                <img
-                                  src={report.afterImageUrl}
-                                  alt="After"
-                                  className="w-16 h-16 object-cover rounded border border-green-200 mt-1"
-                                  onClick={() => setSelectedImage(report.afterImageUrl!)}
-                                  style={{ cursor: "pointer" }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        {/* Location */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <div>
-                            <div className="flex items-center gap-1 text-xs text-blue-800">
-                              <MapPin className="w-3 h-3" />
-                              {report.address}
-                            </div>
-                            {report.location?.coordinates && (
-                              <div className="text-xs text-blue-600 mt-1">
-                                {report.location.coordinates[1].toFixed(4)}, {report.location.coordinates[0].toFixed(4)}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        {/* Reporter */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <div className="text-xs text-blue-900 font-medium">{report.user.email}</div>
-                          {report.user.phone && (
-                            <div className="text-xs text-blue-700">{report.user.phone}</div>
-                          )}
-                        </TableCell>
-                        {/* Date */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <div className="flex items-center gap-1 text-xs text-blue-900">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(report.createdAt).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        {/* Status */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <Select
-                            value={report.status}
-                            onValueChange={value => handleStatusChange(report._id, value)}
-                            disabled={isAfterImageUploading}
-                          >
-                            <SelectTrigger className={`w-32 h-8 bg-white border border-blue-200 rounded shadow-none text-sm font-semibold
+                              <SelectTrigger className={`w-32 h-8 bg-white border border-blue-200 rounded shadow-none text-sm font-semibold
                               ${report.status === "pending" ? "text-yellow-700" : report.status === "in-progress" ? "text-blue-700" : "text-green-700"}
                             `}>
-                              <SelectValue>
-                                {report.status === "pending"
-                                  ? "Pending"
-                                  : report.status === "in-progress"
-                                    ? "In Progress"
-                                    : "Resolved"}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">
-                                <span className="text-yellow-700 font-semibold">Pending</span>
-                              </SelectItem>
-                              <SelectItem value="in-progress">
-                                <span className="text-blue-700 font-semibold">In Progress</span>
-                              </SelectItem>
-                              <SelectItem value="resolved">
-                                <span className="text-green-700 font-semibold">Resolved</span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        {/* Priority */}
-                        <TableCell className="py-3 px-4 align-top">
-                          {report.priority && (
-                            <Badge variant={getPriorityColor(report.priority) as any} className="text-xs">
-                              {report.priority}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        {/* Actions */}
-                        <TableCell className="py-3 px-4 align-top">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Eye className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Edit className="w-4 h-4" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="w-16 h-16 text-blue-200 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2 text-blue-900">No Reports Found</h3>
-                <p className="text-blue-700">
-                  {searchQuery || statusFilter !== "all" || categoryFilter !== "all"
-                    ? "Try adjusting your filters or search query."
-                    : "Reports will appear here once users submit them."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                                <SelectValue>
+                                  {report.status === "pending"
+                                    ? "Pending"
+                                    : report.status === "in-progress"
+                                      ? "In Progress"
+                                      : "Resolved"}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">
+                                  <span className="text-yellow-700 font-semibold">Pending</span>
+                                </SelectItem>
+                                <SelectItem value="in-progress">
+                                  <span className="text-blue-700 font-semibold">In Progress</span>
+                                </SelectItem>
+                                <SelectItem value="resolved">
+                                  <span className="text-green-700 font-semibold">Resolved</span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          {/* Priority */}
+                          <TableCell className="py-3 px-4 align-top">
+                            {report.priority && (
+                              <Badge variant={getPriorityColor(report.priority) as any} className="text-xs">
+                                {report.priority}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          {/* Actions */}
+                          <TableCell className="py-3 px-4 align-top">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Eye className="w-4 h-4" /></Button>
+                              <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Edit className="w-4 h-4" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="w-16 h-16 text-blue-200 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2 text-blue-900">No Reports Found</h3>
+                  <p className="text-blue-700">
+                    {searchQuery || statusFilter !== "all" || categoryFilter !== "all"
+                      ? "Try adjusting your filters or search query."
+                      : "Reports will appear here once users submit them."}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Modal for uploading after image */}
+        {/** MOBILE CARD LIST */}
+        <div className="flex flex-col gap-4 md:hidden">
+          {filteredReports.length === 0 ? (
+            <div className="text-center py-8 text-blue-700">No reports found.</div>
+          ) : (
+            filteredReports.map(report => (
+              <Card key={report._id} className="shadow flex flex-col gap-1 p-3">
+                <div className="flex gap-3">
+                  <div>
+                    {report.imageUrl ? (
+                      <img
+                        src={report.imageUrl}
+                        alt={report.title}
+                        className="rounded w-20 h-16 object-cover border border-blue-200"
+                        onClick={() => setSelectedImage(report.imageUrl!)}
+                        style={{ cursor: "pointer" }}
+                      />
+                    ) : (
+                      <div className="w-20 h-16 flex items-center justify-center bg-gray-100 rounded border">
+                        <ImageIcon className="w-6 h-6 text-gray-500" />
+                      </div>
+                    )}
+                    {report.afterImageUrl && (
+                      <div className="mt-2">
+                        <span className="text-xs text-green-700 font-bold">After:</span>
+                        <img
+                          src={report.afterImageUrl}
+                          alt="After"
+                          className="rounded w-20 h-16 object-cover border border-green-200 mt-1"
+                          onClick={() => setSelectedImage(report.afterImageUrl!)}
+                          style={{ cursor: "pointer" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-blue-900">{report.title || report.category}</span>
+                      <Badge variant={getStatusColor(report.status) as any} className="text-xs ml-auto">{report.status}</Badge>
+                    </div>
+                    <div className="text-xs text-blue-700 mb-1">{report.category}</div>
+                    <div className="text-xs text-blue-800">{report.description}</div>
+                    {report.severity && <div className="text-xs text-blue-700">Severity: Level {report.severity}</div>}
+                    <div className="flex flex-wrap gap-2 text-xs text-blue-800 mt-2">
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{report.address}</span>
+                      {report.location?.coordinates && (
+                        <span>
+                          ({report.location.coordinates[1].toFixed(4)}, {report.location.coordinates[0].toFixed(4)})
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(report.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center text-xs mt-1 text-blue-900">
+                      <span>{report.user?.email}</span>
+                      {report.user?.phone && <span>{report.user.phone}</span>}
+                      {report.priority && (
+                        <Badge variant={getPriorityColor(report.priority) as any} className="ml-2">{report.priority}</Badge>
+                      )}
+                    </div>
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-2">
+                      <Select
+                        value={report.status}
+                        onValueChange={value => handleStatusChange(report._id, value)}
+                        disabled={isAfterImageUploading}
+                      >
+                        <SelectTrigger className="w-28 h-8 border border-blue-200 rounded shadow-none text-xs font-semibold">
+                          <SelectValue>
+                            {report.status === "pending"
+                              ? "Pending"
+                              : report.status === "in-progress"
+                                ? "In Progress"
+                                : "Resolved"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Edit className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* After image modal */}
         {showAfterImageModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-2">
+            <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 w-full max-w-md">
               <h2 className="text-lg font-bold mb-2 text-blue-900">Upload After Image (required to resolve)</h2>
               <input
                 type="file"
@@ -407,6 +498,7 @@ export default function AdminDashboard() {
                 ref={fileInputRef}
                 onChange={e => setAfterImageFile(e.target.files?.[0] || null)}
                 disabled={isAfterImageUploading}
+                className="w-full"
               />
               {afterImageFile && (
                 <img src={URL.createObjectURL(afterImageFile)} className="mt-4 rounded w-full max-h-60 object-contain border" alt="Preview" />
@@ -426,14 +518,14 @@ export default function AdminDashboard() {
         {/* Image Modal */}
         {selectedImage && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
             onClick={() => setSelectedImage(null)}
           >
-            <div className="relative max-w-2xl max-h-[80vh] bg-white rounded-lg shadow-lg">
+            <div className="relative max-w-xs sm:max-w-2xl max-h-[80vh] bg-white rounded-lg shadow-lg">
               <img
                 src={selectedImage}
                 alt="Issue photo"
-                className="max-w-full max-h-[75vh] rounded mb-2"
+                className="max-w-full max-h-[60vh] sm:max-h-[75vh] rounded mb-2"
               />
               <Button
                 variant="secondary"
@@ -451,12 +543,11 @@ export default function AdminDashboard() {
   );
 }
 
-// StatCard helper
 function StatCard({ icon, value, label, border, color = "" }: { icon: React.ReactNode, value: string | number, label: string, border?: string, color?: string }) {
   return (
-    <div className={`bg-white rounded shadow flex flex-col items-center py-9 border ${border ? border : "border-blue-100"}`}>
+    <div className={`bg-white rounded shadow flex flex-col items-center py-6 sm:py-9 border ${border ? border : "border-blue-100"}`}>
       <div className={color}>{icon}</div>
-      <span className={`text-2xl font-bold ${color ? color : "text-blue-900"}`}>{value}</span>
+      <span className={`text-xl sm:text-2xl font-bold ${color ? color : "text-blue-900"}`}>{value}</span>
       <span className={`text-xs ${color ? color : "text-blue-700"} mt-1`}>{label}</span>
     </div>
   );

@@ -25,7 +25,6 @@ const features = [
     description: "Work together with citizens and government for a better, cleaner city."
   }
 ];
-
 const stats = [
   { label: "Cases Closed", value: "1,247", icon: CheckCircle },
   { label: "Verified Users", value: "3,891", icon: Users },
@@ -35,17 +34,15 @@ const stats = [
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
- 
-
+    <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb] w-full">
       {/* Hero Section */}
-      <section className="py-16 md:py-20 bg-blue-50 border-b border-blue-100">
+      <section className="py-10 md:py-16 bg-blue-50 border-b border-blue-100">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center mb-10">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-blue-900 tracking-tight">
+          <div className="max-w-2xl mx-auto text-center mb-6 md:mb-10">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 text-blue-900 tracking-tight">
               Report, view, and resolve local civic problems
             </h2>
-            <p className="text-lg text-blue-700 font-medium">
+            <p className="text-base md:text-lg text-blue-700 font-medium">
               For complaints about roads, streetlights, water, sanitation, and civic amenities
             </p>
           </div>
@@ -53,13 +50,13 @@ const Index = () => {
             <input 
               type="text" 
               placeholder="Enter locality, problem, or area (e.g. 'water leak MG road')"
-              className="rounded-none w-full px-5 py-3 border border-blue-200 shadow bg-white focus:border-blue-600 text-lg text-blue-900 outline-none font-medium"
+              className="rounded-none w-full px-5 py-3 border border-blue-200 shadow bg-white focus:border-blue-600 text-base md:text-lg text-blue-900 outline-none font-medium"
             />
-            <div className="flex w-full justify-between gap-2 mt-2">
-              <Button className="rounded-none w-1/2 bg-blue-700 text-white font-semibold hover:bg-blue-800">
+            <div className="flex w-full flex-col gap-2 mt-2 sm:flex-row sm:justify-between">
+              <Button className="rounded-none w-full sm:w-1/2 bg-blue-700 text-white font-semibold hover:bg-blue-800">
                 Go
               </Button>
-              <Button variant="outline" className="rounded-none w-1/2 border-blue-700 text-blue-700 hover:bg-blue-100">
+              <Button variant="outline" className="rounded-none w-full sm:w-1/2 border-blue-700 text-blue-700 hover:bg-blue-100">
                 📍 Use my current location
               </Button>
             </div>
@@ -68,14 +65,12 @@ const Index = () => {
       </section>
 
       {/* Stats Cards */}
-      <section className="py-8 bg-white">
-        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <section className="py-6 md:py-8 bg-white">
+        <div className="container mx-auto px-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           {stats.map((stat, i) => (
-            <div key={stat.label}
-              className="flex flex-col py-6 gap-2 border border-blue-100 bg-blue-50 rounded-lg shadow-civic"
-            >
+            <div key={stat.label} className="flex flex-col py-5 gap-2 border border-blue-100 bg-blue-50 rounded-lg shadow-civic">
               <stat.icon className="w-7 h-7 mx-auto text-blue-700" />
-              <div className="text-2xl font-bold text-blue-900">{stat.value}</div>
+              <div className="text-lg md:text-2xl font-bold text-blue-900">{stat.value}</div>
               <div className="text-xs uppercase tracking-wide text-blue-600">{stat.label}</div>
             </div>
           ))}
@@ -83,11 +78,13 @@ const Index = () => {
       </section>
 
       {/* Features */}
-      <section className="py-12 md:py-16 bg-gradient-to-b from-blue-50 via-[#f8fafc] to-blue-50">
-        <div className="container mx-auto px-4">
-          <h3 className="text-3xl font-bold text-blue-900 mb-8 text-center tracking-tight">Why use the official portal?</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {features.map(({icon: Icon, title, description}) => (
+      <section className="py-8 md:py-14 bg-gradient-to-b from-blue-50 via-[#f8fafc] to-blue-50">
+        <div className="container mx-auto px-2 md:px-4">
+          <h3 className="text-2xl md:text-3xl font-bold text-blue-900 mb-5 md:mb-8 text-center tracking-tight">
+            Why use the official portal?
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {features.map(({ icon: Icon, title, description }) => (
               <Card key={title} className="shadow-civic hover:shadow-civic-strong border border-blue-100 transition-all duration-200">
                 <CardHeader className="flex flex-col items-center mt-6 mb-2">
                   <div className="w-14 h-14 bg-blue-700 rounded-lg flex items-center justify-center mb-4 shadow-lg">
@@ -107,11 +104,11 @@ const Index = () => {
       </section>
 
       {/* How to Report & Recent Reports */}
-      <section className="py-12 md:py-16 bg-white border-t border-blue-100">
-        <div className="container mx-auto px-4 grid md:grid-cols-2 gap-20">
+      <section className="py-10 md:py-14 bg-white border-t border-blue-100">
+        <div className="container mx-auto px-2 md:px-4 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20">
           {/* How to Report */}
           <div>
-            <h4 className="text-2xl font-bold text-blue-900 mb-6">How to file a complaint</h4>
+            <h4 className="text-xl md:text-2xl font-bold text-blue-900 mb-6">How to file a complaint</h4>
             <ol className="space-y-6 pl-5 border-l-4 border-blue-700">
               <li className="relative pl-8">
                 <span className="absolute left-[-20px] top-0 font-bold bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center">1</span>
@@ -133,7 +130,7 @@ const Index = () => {
           </div>
           {/* Recently reported problems */}
           <div>
-            <h4 className="text-2xl font-bold text-blue-900 mb-6">Recently Reported Problems</h4>
+            <h4 className="text-xl md:text-2xl font-bold text-blue-900 mb-6">Recently Reported Problems</h4>
             <ul className="space-y-6">
               <li className="p-5 border-l-4 border-blue-700 bg-blue-50 rounded">
                 <div className="text-blue-800 font-semibold">Broken Streetlight, Nehru Road</div>
@@ -153,16 +150,16 @@ const Index = () => {
       </section>
 
       {/* Final Call to Action */}
-      <section className="py-12 md:py-18 bg-gradient-to-b from-blue-700 via-blue-800 to-blue-900">
+      <section className="py-10 md:py-16 bg-gradient-to-b from-blue-700 via-blue-800 to-blue-900">
         <div className="container mx-auto px-4 text-center">
-          <h3 className="text-3xl md:text-4xl font-bold mb-4 text-white">Ready to help your city?</h3>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">
+          <h3 className="text-2xl md:text-4xl font-bold mb-4 text-white">Ready to help your city?</h3>
+          <p className="text-base md:text-xl text-blue-100 max-w-2xl mx-auto mb-8">
             Use the government’s official platform for transparent and fast civic issue resolution!
           </p>
           <Button
             asChild
             size="lg"
-            className="bg-white text-blue-900 font-bold text-lg px-12 py-6 rounded-none hover:bg-blue-100 border border-blue-900 shadow"
+            className="bg-white text-blue-900 font-bold text-lg px-8 py-4 md:px-12 md:py-6 rounded-none hover:bg-blue-100 border border-blue-900 shadow"
           >
             <Link to="/report">File a New Grievance Now</Link>
           </Button>
