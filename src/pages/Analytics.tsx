@@ -3,6 +3,7 @@ import { BarChart3, TrendingUp, MapPin, Clock, Users, AlertCircle, Calendar, Fil
 import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend } from "recharts";
 
 interface Report {
   _id: string;
@@ -25,104 +26,92 @@ const fetchReportStats = async () => {
   return data.data;
 };
 
+const COLORS = ["#2563eb", "#7c3aed", "#16a34a", "#eab308", "#db2777", "#f97316"];
+
 export default function Analytics() {
   const { data: reports, isLoading } = useQuery({
     queryKey: ['analyticsReports'],
     queryFn: fetchAllReports
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ['analyticsStats'],
-    queryFn: fetchReportStats
-  });
-
-  // Calculate dynamic analytics from database
+  // Compute stats
   const analytics = useMemo(() => {
     if (!reports) return null;
 
-    // Category distribution
-    const categoryStats = reports.reduce((acc, report) => {
-      acc[report.category] = (acc[report.category] || 0) + 1;
-      return acc;
+    // Categories
+    const categoryStats = reports.reduce((acc, rep) => {
+      acc[rep.category] = (acc[rep.category] || 0) + 1; return acc;
     }, {} as Record<string, number>);
-
     const categoryData = Object.entries(categoryStats)
       .map(([name, count]) => ({
-        name,
-        count,
+        name, value: count,
         percentage: Math.round((count / reports.length) * 100)
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5); // Top 5 categories
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
 
-    // Monthly trend analysis
-    const monthlyStats = reports.reduce((acc, report) => {
-      const month = new Date(report.createdAt).toISOString().slice(0, 7); // YYYY-MM
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
+    // Trends by month
+    const monthlyStats = reports.reduce((acc, rep) => {
+      const month = new Date(rep.createdAt).toISOString().slice(0, 7);
+      acc[month] = (acc[month] || 0) + 1; return acc;
     }, {} as Record<string, number>);
-
     const monthlyData = Object.entries(monthlyStats)
       .map(([month, count]) => ({ month, count }))
       .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6); // Last 6 months
+      .slice(-6);
 
-    // Status distribution
-    const statusStats = reports.reduce((acc, report) => {
-      acc[report.status] = (acc[report.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Severity analysis
-    const severityStats = reports
-      .filter(report => report.severity)
-      .reduce((acc, report) => {
-        const level = report.severity!;
-        acc[level] = (acc[level] || 0) + 1;
-        return acc;
-      }, {} as Record<number, number>);
-
-    // Weekly trend
+    // By week (last 7 days)
     const now = new Date();
     const weeklyData = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
-      const dayReports = reports.filter(report => {
-        const reportDate = new Date(report.createdAt);
-        return reportDate.toDateString() === date.toDateString();
-      });
+      const count = reports.filter(rep =>
+        new Date(rep.createdAt).toDateString() === date.toDateString()
+      ).length;
       return {
         day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        count: dayReports.length
+        count,
       };
     }).reverse();
 
-    // High priority areas (based on location clustering)
+    // Statuses
+    const statusStats = reports.reduce((acc, rep) => {
+      acc[rep.status] = (acc[rep.status] || 0) + 1; return acc;
+    }, {} as Record<string, number>);
+
+    // Severity
+    const severityStats = reports
+      .filter(r => typeof r.severity === "number")
+      .reduce((acc, rep) => {
+        const level = rep.severity!;
+        acc[level] = (acc[level] || 0) + 1; return acc;
+      }, {} as Record<number, number>);
+    const severityData = Object.entries(severityStats).map(([level, count]) => ({
+      level, value: count
+    }));
+
+    // Hotspots
     const locationClusters = reports
-      .filter(report => report.location?.coordinates)
-      .reduce((acc, report) => {
-        const coords = report.location!.coordinates;
-        const key = `${coords[1].toFixed(2)},${coords[0].toFixed(2)}`; // Rough clustering
-        if (!acc[key]) {
-          acc[key] = { count: 0, lat: coords[1], lng: coords[0] };
-        }
+      .filter(rep => rep.location?.coordinates)
+      .reduce((acc, rep) => {
+        const coords = rep.location!.coordinates;
+        const key = `${coords[1].toFixed(2)},${coords[0].toFixed(2)}`;
+        if (!acc[key]) acc[key] = { count: 0, lat: coords[1], lng: coords[0] };
         acc[key].count++;
         return acc;
       }, {} as Record<string, { count: number; lat: number; lng: number }>);
-
     const hotspots = Object.values(locationClusters)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .sort((a, b) => b.count - a.count).slice(0, 5);
 
     return {
       categoryData,
       monthlyData,
       statusStats,
-      severityStats,
+      severityData,
       weeklyData,
       hotspots,
       totalReports: reports.length,
-      averagePerDay: Math.round(reports.length / 30), // Assuming 30 days
+      averagePerDay: Math.round(reports.length / 30) || 1,
       resolutionRate: Math.round((statusStats.resolved / reports.length) * 100) || 0
     };
   }, [reports]);
@@ -137,7 +126,6 @@ export default function Analytics() {
       </div>
     );
   }
-
   if (!analytics) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -151,224 +139,175 @@ export default function Analytics() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Analytics Dashboard</h1>
-          <p className="text-lg text-muted-foreground">
-            Comprehensive insights into civic issue reporting and resolution
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
+      <div className="container mx-auto px-4 py-12">
+        {/* HEADER */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-extrabold text-blue-900 mb-3">Analytics Dashboard</h1>
+          <p className="text-lg text-blue-800 font-medium">Civic issue reporting & resolution patterns</p>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="shadow-civic">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{analytics.totalReports}</p>
-                  <p className="text-sm text-muted-foreground">Total Reports</p>
-                </div>
-                <FileText className="w-8 h-8 text-blue-600" />
-              </div>
+        {/* SUMMARIES */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-7 mb-10">
+          <SummaryTile value={analytics.totalReports} label="Total Reports" icon={<FileText className="w-7 h-7 text-blue-700" />} color="text-blue-700" />
+          <SummaryTile value={analytics.resolutionRate + "%"} label="Resolution Rate" icon={<TrendingUp className="w-7 h-7 text-green-700" />} color="text-green-700" />
+          <SummaryTile value={analytics.averagePerDay} label="Daily Average" icon={<Clock className="w-7 h-7 text-orange-700" />} color="text-orange-700" />
+          <SummaryTile value={analytics.hotspots.length} label="Hotspot Areas" icon={<MapPin className="w-7 h-7 text-purple-700" />} color="text-purple-700" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* CATEGORY PIE */}
+          <Card className="shadow-civic-strong border border-blue-100">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><BarChart3 className="w-5 h-5"/> Top Categories</CardTitle>
+              <CardDescription>Distribution of top 5 civic complaint categories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={analytics.categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#2563eb" label>
+                    {analytics.categoryData.map((entry, i) => (
+                      <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          <Card className="shadow-civic">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-green-600">{analytics.resolutionRate}%</p>
-                  <p className="text-sm text-muted-foreground">Resolution Rate</p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-green-600" />
-              </div>
+          {/* STATUS PIE */}
+          <Card className="shadow-civic-strong border border-blue-100">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Status Overview</CardTitle>
+              <CardDescription>Pending, In Progress & Resolved proportions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Pending", value: analytics.statusStats.pending || 0 },
+                      { name: "In Progress", value: analytics.statusStats["in-progress"] || 0 },
+                      { name: "Resolved", value: analytics.statusStats.resolved || 0 },
+                    ]}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#4f46e5"
+                    label
+                  >
+                    <Cell fill="#eab308" />
+                    <Cell fill="#2563eb" />
+                    <Cell fill="#16a34a" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          <Card className="shadow-civic">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-orange-600">{analytics.averagePerDay}</p>
-                  <p className="text-sm text-muted-foreground">Daily Average</p>
-                </div>
-                <Clock className="w-8 h-8 text-orange-600" />
-              </div>
+          {/* WEEKLY BAR */}
+          <Card className="shadow-civic-strong border border-blue-100">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5"/> Past 7 Days</CardTitle>
+              <CardDescription>Number of reports submitted each day</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={analytics.weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" stroke="#2563eb" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#2563eb" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          <Card className="shadow-civic">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-purple-600">{analytics.hotspots.length}</p>
-                  <p className="text-sm text-muted-foreground">Hotspot Areas</p>
-                </div>
-                <MapPin className="w-8 h-8 text-purple-600" />
-              </div>
+          {/* MONTHLY LINE */}
+          <Card className="shadow-civic-strong border border-blue-100">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" /> Monthly Trend</CardTitle>
+              <CardDescription>Civic complaints trend over last 6 months</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={analytics.monthlyData}>
+                  <XAxis dataKey="month" stroke="#2563eb" />
+                  <YAxis allowDecimals={false}/>
+                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <Line type="monotone" dataKey="count" stroke="#16a34a" strokeWidth={3} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Category Distribution */}
-          <Card className="shadow-civic-strong">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+          {/* SEVERITY BAR */}
+          <Card className="shadow-civic-strong border border-blue-100">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Issue Categories
-              </CardTitle>
-              <CardDescription>Distribution of reported issues by category</CardDescription>
+              <CardTitle className="flex items-center gap-2"><AlertCircle className="w-5 h-5"/> Severity Levels</CardTitle>
+              <CardDescription>Distribution of severity for all reports</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {analytics.categoryData.map((item, index) => (
-                  <div key={item.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: `hsl(${index * 60}, 70%, 50%)` }}
-                      />
-                      <span className="text-sm font-medium">{item.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold">{item.count}</div>
-                      <div className="text-xs text-muted-foreground">{item.percentage}%</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={analytics.severityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="level" stroke="#db2777"/>
+                  <YAxis allowDecimals={false}/>
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#db2777" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* Weekly Trend */}
-          <Card className="shadow-civic-strong">
+          {/* HOTSPOT LIST */}
+          <Card className="shadow-civic-strong border border-blue-100">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Weekly Trend
-              </CardTitle>
-              <CardDescription>Reports submitted in the last 7 days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {analytics.weeklyData.map((item) => (
-                  <div key={item.day} className="flex items-center justify-between">
-                    <span className="text-sm font-medium w-12">{item.day}</span>
-                    <div className="flex-1 mx-3">
-                      <div className="bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: `${Math.max((item.count / Math.max(...analytics.weeklyData.map(d => d.count))) * 100, 5)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold w-8 text-right">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Trend */}
-          <Card className="shadow-civic-strong">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Monthly Trend
-              </CardTitle>
-              <CardDescription>Reports over the last 6 months</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {analytics.monthlyData.map((item) => (
-                  <div key={item.month} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.month}</span>
-                    <div className="flex-1 mx-3">
-                      <div className="bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${Math.max((item.count / Math.max(...analytics.monthlyData.map(d => d.count))) * 100, 5)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* High-Frequency Report Areas */}
-          <Card className="shadow-civic-strong">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Hotspot Areas
-              </CardTitle>
-              <CardDescription>Areas with highest report frequency</CardDescription>
+              <CardTitle className="flex items-center gap-2"><MapPin className="w-5 h-5" /> Hotspot Areas</CardTitle>
+              <CardDescription>Zones with highest repeat reports</CardDescription>
             </CardHeader>
             <CardContent>
               {analytics.hotspots.length > 0 ? (
-                <div className="space-y-4">
-                  {analytics.hotspots.map((hotspot, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                <div className="flex flex-col gap-3">
+                  {analytics.hotspots.map((hotspot, idx) => (
+                    <div key={idx} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-bold text-red-600">{index + 1}</span>
-                        </div>
+                        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-800">{idx + 1}</div>
                         <div>
-                          <div className="text-sm font-medium">
-                            Area {index + 1}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {hotspot.lat.toFixed(4)}, {hotspot.lng.toFixed(4)}
-                          </div>
+                          <span className="font-medium text-blue-900">{hotspot.lat.toFixed(4)}, {hotspot.lng.toFixed(4)}</span>
+                          <span className="block text-xs text-muted-foreground">({hotspot.count} reports)</span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-red-600">{hotspot.count}</div>
-                        <div className="text-xs text-muted-foreground">reports</div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-4">
-                  <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No location data available</p>
-                </div>
+                <div className="text-center py-4 text-blue-800">No repeat-report clusters found.</div>
               )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Status Overview */}
-        <Card className="mt-8 shadow-civic-strong">
-          <CardHeader>
-            <CardTitle>Status Overview</CardTitle>
-            <CardDescription>Current status distribution of all reports</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(analytics.statusStats).map(([status, count]) => {
-                const percentage = Math.round((count / analytics.totalReports) * 100);
-                const color = status === 'pending' ? 'orange' : status === 'in-progress' ? 'blue' : 'green';
-                
-                return (
-                  <div key={status} className="text-center">
-                    <div className={`text-3xl font-bold text-${color}-600 mb-2`}>{count}</div>
-                    <div className="capitalize text-sm font-medium mb-2">{status.replace('-', ' ')}</div>
-                    <div className={`text-xs text-${color}-600`}>{percentage}% of total</div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
       </div>
+    </div>
+  );
+}
+
+// Summary tile helper component
+function SummaryTile({ value, label, icon, color }: { value: React.ReactNode, label: string, icon: React.ReactNode, color: string }) {
+  return (
+    <div className="bg-white rounded shadow flex flex-col items-center py-8 gap-2 border border-blue-100">
+      <div className={color}>{icon}</div>
+      <span className={`text-2xl font-bold ${color}`}>{value}</span>
+      <span className="text-xs text-blue-800 uppercase tracking-wider">{label}</span>
     </div>
   );
 }
