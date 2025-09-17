@@ -5,9 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
   Eye, Edit, CheckCircle, Clock, AlertTriangle, FileText, Loader2,
@@ -30,9 +28,11 @@ export default function AdminDashboard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const [showAfterImageModal, setShowAfterImageModal] = useState(false);
   const [pendingResolve, setPendingResolve] = useState<string | null>(null);
   const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
+  const [isAfterImageUploading, setIsAfterImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const queryClient = useQueryClient();
@@ -79,7 +79,10 @@ export default function AdminDashboard() {
       await api.put(`/reports/${reportId}`, data, config);
       queryClient.invalidateQueries({ queryKey: ["allReports"] });
     } catch (error) {
-      alert("Failed to update report status: " + (error?.response?.data?.message || error.message));
+      alert(
+        "Failed to update report status: " +
+          (error?.response?.data?.message || error.message)
+      );
     }
   };
 
@@ -87,14 +90,18 @@ export default function AdminDashboard() {
     if (value === "resolved") {
       setPendingResolve(reportId);
       setShowAfterImageModal(true);
+      setAfterImageFile(null);
     } else {
       updateReportStatus(reportId, value);
     }
   };
-  const onAfterImageSubmit = () => {
+
+  const onAfterImageSubmit = async () => {
     if (pendingResolve && afterImageFile) {
-      updateReportStatus(pendingResolve, "resolved", afterImageFile);
       setShowAfterImageModal(false);
+      setIsAfterImageUploading(true);
+      await updateReportStatus(pendingResolve, "resolved", afterImageFile);
+      setIsAfterImageUploading(false);
       setPendingResolve(null);
       setAfterImageFile(null);
     }
@@ -146,6 +153,17 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
       <div className="container mx-auto px-4 py-10">
+        {/* Loading overlay for after image */}
+        {isAfterImageUploading && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
+            <div className="flex flex-col items-center bg-white px-10 py-10 rounded-lg shadow-md">
+              <Loader2 className="w-12 h-12 animate-spin text-blue-700 mb-4" />
+              <div className="text-blue-900 font-semibold text-lg">Uploading After Image…</div>
+              <div className="text-blue-800 mt-2">Please wait until the process finishes.</div>
+            </div>
+          </div>
+        )}
+
         {/* DASH HEADER */}
         <div className="mb-10">
           <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-1 tracking-tight">
@@ -318,10 +336,11 @@ export default function AdminDashboard() {
                           <Select
                             value={report.status}
                             onValueChange={value => handleStatusChange(report._id, value)}
+                            disabled={isAfterImageUploading}
                           >
                             <SelectTrigger className={`w-32 h-8 bg-white border border-blue-200 rounded shadow-none text-sm font-semibold
-                                ${report.status === "pending" ? "text-yellow-700" : report.status === "in-progress" ? "text-blue-700" : "text-green-700"}
-                              `}>
+                              ${report.status === "pending" ? "text-yellow-700" : report.status === "in-progress" ? "text-blue-700" : "text-green-700"}
+                            `}>
                               <SelectValue>
                                 {report.status === "pending"
                                   ? "Pending"
@@ -354,8 +373,8 @@ export default function AdminDashboard() {
                         {/* Actions */}
                         <TableCell className="py-3 px-4 align-top">
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon"><Eye className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Eye className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" disabled={isAfterImageUploading}><Edit className="w-4 h-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -387,15 +406,16 @@ export default function AdminDashboard() {
                 accept="image/*"
                 ref={fileInputRef}
                 onChange={e => setAfterImageFile(e.target.files?.[0] || null)}
+                disabled={isAfterImageUploading}
               />
               {afterImageFile && (
                 <img src={URL.createObjectURL(afterImageFile)} className="mt-4 rounded w-full max-h-60 object-contain border" alt="Preview" />
               )}
               <div className="flex gap-4 mt-4">
-                <Button onClick={onAfterImageSubmit} disabled={!afterImageFile}>
+                <Button onClick={onAfterImageSubmit} disabled={!afterImageFile || isAfterImageUploading}>
                   Upload and Resolve
                 </Button>
-                <Button variant="outline" onClick={onAfterImageCancel}>
+                <Button variant="outline" onClick={onAfterImageCancel} disabled={isAfterImageUploading}>
                   Cancel
                 </Button>
               </div>
