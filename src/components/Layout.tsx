@@ -9,92 +9,113 @@ export function Layout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, isLoading, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
   const navigation = [
     { name: "Home", href: "/", icon: Home, show: true },
-    { name: "Report Issue", href: "/report", icon: FileText, show: isAuthenticated },
+    {
+      name: "Report Issue",
+      href: "/report",
+      icon: FileText,
+      show:
+        isAuthenticated &&
+        (isLoading || !user ? true : user.role !== "admin"),
+    },
     { name: "View Map", href: "/map", icon: MapPin, show: true },
-    { name: "My Issues", href: "/my-issues", icon: FileText, show: isAuthenticated },
+    {
+      name: "My Issues",
+      href: "/my-issues",
+      icon: FileText,
+      show:
+        isAuthenticated &&
+        (isLoading || !user ? true : user.role !== "admin"),
+    },
     { name: "My Profile", href: "/profile", icon: User, show: isAuthenticated },
-    { name: "Dashboard", href: "/admin", icon: BarChart3, show: isAuthenticated && user?.role === 'admin' },
-    { name: "Analytics", href: "/analytics", icon: BarChart3, show: isAuthenticated && user?.role === 'admin' },
+    { name: "Dashboard", href: "/admin", icon: BarChart3, show: isAuthenticated && user?.role === "admin" },
+    { name: "Analytics", href: "/analytics", icon: BarChart3, show: isAuthenticated && user?.role === "admin" },
   ];
 
   const visibleNavigation = navigation.filter(item => item.show);
 
-  // Fixed logout handler using React Router
   const handleLogout = () => {
-    logout(); // Clear token and user state
-    navigate('/login'); // Use React Router navigation instead of window.location
+    logout();
+    navigate("/login");
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-civic">
-              <MapPin className="h-5 w-5 text-primary-foreground" />
+
+      {/* OFFICIAL GOV HEADER */}
+      <header className="bg-white/95 border-b border-blue-100 shadow py-5">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="rounded bg-blue-800 px-2.5 py-1">
+              <MapPin className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold bg-gradient-civic bg-clip-text text-transparent">
-              CivicSync
+            <span className="uppercase tracking-wider font-bold text-blue-900 text-xl md:text-2xl">
+              Civicsync
             </span>
-          </Link>
+            <span className="hidden md:block ml-3 text-sm text-blue-700/70 font-semibold italic">
+              An official city platform
+            </span>
+          </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            {visibleNavigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive(item.href)
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="flex items-center gap-4">
 
-          {/* User Actions */}
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-2">
-                <div className="hidden sm:block text-sm">
-                  <p className="font-medium">{user?.email}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {user?.role === 'admin' ? 'Administrator' : 'Citizen'}
-                  </p>
+            {/* Navigation (desktop) */}
+            <nav className="hidden md:flex items-center space-x-3">
+              {visibleNavigation.map(item => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center gap-1 px-3 py-2 rounded text-sm font-medium transition-all",
+                      isActive(item.href)
+                        ? "bg-blue-100 text-blue-800"
+                        : "text-blue-800 hover:bg-blue-50 hover:text-blue-900"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Officer sign in / user area */}
+            <div>
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-3">
+                  <div className="hidden sm:block text-sm text-blue-900">
+                    <span className="font-semibold">{user?.email}</span>
+                    <span className="ml-1 px-2 py-0.5 rounded bg-blue-100 text-xs uppercase tracking-wide">{user?.role === "admin" ? "Administrator" : "Citizen"}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    className="text-blue-700 hover:text-blue-900"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <Link to="/login">
-                <Button variant="default" className="bg-gradient-civic hover:bg-primary-dark">
-                  Sign In
-                </Button>
-              </Link>
-            )}
+              ) : (
+                <div className="flex gap-2">
+                  {/* Show separate “Report Issue” and “Officer Sign In” even to non-logged-in */}
+                  <Button asChild className="rounded-none bg-blue-800 hover:bg-blue-900 text-white font-medium px-5">
+                    <Link to="/report">Report Issue</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="rounded-none border-blue-800 text-blue-800 font-medium px-5">
+                    <Link to="/login">Officer Sign In</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <Button
@@ -114,10 +135,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t">
+          <div className="md:hidden border-t bg-white">
             <div className="container py-4">
               <nav className="flex flex-col space-y-2">
-                {visibleNavigation.map((item) => {
+                {visibleNavigation.map(item => {
                   const Icon = item.icon;
                   return (
                     <Link
@@ -125,33 +146,32 @@ export function Layout({ children }: { children: ReactNode }) {
                       to={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(
-                        "flex items-center space-x-3 px-3 py-3 rounded-md text-sm font-medium transition-colors",
+                        "flex items-center space-x-3 px-4 py-3 rounded-md text-sm font-medium transition-colors",
                         isActive(item.href)
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                          ? "bg-blue-100 text-blue-900"
+                          : "text-blue-800 hover:bg-blue-50 hover:text-blue-900"
                       )}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-5 h-5" />
                       <span>{item.name}</span>
                     </Link>
                   );
                 })}
 
-                {/* Mobile User Info */}
                 {isAuthenticated && (
                   <div className="mt-4 pt-4 border-t">
                     <div className="px-3 py-2">
                       <p className="font-medium text-sm">{user?.email}</p>
-                      <p className="text-xs text-muted-foreground capitalize">
+                      <span className="text-xs text-blue-700 uppercase">
                         {user?.role === 'admin' ? 'Administrator' : 'Citizen'}
-                      </p>
+                      </span>
                     </div>
                     <Button
                       variant="ghost"
                       onClick={handleLogout}
-                      className="w-full justify-start px-3 mt-2 text-muted-foreground hover:text-foreground"
+                      className="w-full justify-start px-3 mt-2 text-blue-700 hover:text-blue-900"
                     >
-                      <LogOut className="w-4 h-4 mr-3" />
+                      <LogOut className="w-4 h-4 mr-2" />
                       Sign Out
                     </Button>
                   </div>
@@ -168,52 +188,15 @@ export function Layout({ children }: { children: ReactNode }) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/50">
-        <div className="container py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-civic">
-                  <MapPin className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="font-semibold">CivicSync</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Empowering citizens to improve their communities through transparent civic engagement.
-              </p>
+      <footer className="py-10 bg-white border-t border-blue-100">
+        <div className="container mx-auto px-4 flex justify-between items-center text-sm text-blue-700">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-800 w-7 h-7 rounded flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-white" />
             </div>
-
-            <div>
-              <h3 className="font-semibold mb-3">Platform</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link to="/map" className="hover:text-foreground transition-colors">Issue Map</Link></li>
-                <li><Link to="/report" className="hover:text-foreground transition-colors">Report Issue</Link></li>
-                <li><Link to="/my-issues" className="hover:text-foreground transition-colors">My Reports</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-3">Support</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Community Guidelines</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-3">Legal</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Cookie Policy</a></li>
-              </ul>
-            </div>
+            <span className="font-semibold tracking-wide">CityGrievance Portal</span>
           </div>
-
-          <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
-            <p>&copy; 2025 CivicSync. All rights reserved.</p>
-          </div>
+          <div>&copy; {(new Date()).getFullYear()} CityGrievance Cell. Government of India.</div>
         </div>
       </footer>
     </div>

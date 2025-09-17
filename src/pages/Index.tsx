@@ -2,260 +2,172 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { MapPin, FileText, Users, BarChart3, CheckCircle, Clock } from "lucide-react";
-import heroImage from "@/assets/civic-hero.jpg";
 
 const features = [
   {
     icon: FileText,
     title: "Easy Reporting",
-    description: "Report civic issues quickly with our simple form and automatic location detection."
+    description: "Report civic issues securely. Your submission goes directly to officials for quick action."
   },
   {
     icon: MapPin,
-    title: "Interactive Map",
-    description: "View all reported issues on an interactive city map with real-time updates."
+    title: "Public Issue Map",
+    description: "Stay informed. All cases are visible citywide, encouraging public participation."
   },
   {
     icon: BarChart3,
-    title: "Analytics Dashboard",
-    description: "Track resolution progress and gain insights into city-wide issue trends."
+    title: "Transparent Analytics",
+    description: "Track resolution speed and departmental performance with live, open data."
   },
   {
     icon: Users,
     title: "Community Driven",
-    description: "Work together as a community to identify and resolve civic challenges."
+    description: "Work together with citizens and government for a better, cleaner city."
   }
 ];
 
 const stats = [
-  { label: "Issues Resolved", value: "1,247", icon: CheckCircle },
-  { label: "Active Citizens", value: "3,891", icon: Users },
-  { label: "Avg Response Time", value: "2.3 days", icon: Clock },
-  { label: "City Departments", value: "12", icon: BarChart3 }
+  { label: "Cases Closed", value: "1,247", icon: CheckCircle },
+  { label: "Verified Users", value: "3,891", icon: Users },
+  { label: "Avg Response", value: "2.3 days", icon: Clock },
+  { label: "Departments", value: "12", icon: BarChart3 }
 ];
 
 const Index = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
+ 
+
       {/* Hero Section */}
-      <section className="relative bg-primary py-20 text-foreground">
-        <div className="container mx-auto px-4 text-center max-w-4xl">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fade-in">
-            Report, view, or discuss local problems
-          </h1>
-          <p className="text-lg md:text-xl mb-8 opacity-80 animate-fade-in">
-            (like graffiti, fly tipping, broken paving slabs, or street lighting)
-          </p>
-          
-          <div className="max-w-2xl mx-auto mb-8 animate-fade-in">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input 
-                type="text" 
-                placeholder="Enter a nearby postcode, or street name and area:"
-                className="flex-1 px-4 py-3 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground"
-              />
-              <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 px-8">
-                Go
-              </Button>
-            </div>
-            <Button 
-              variant="outline" 
-              className="mt-4 border-foreground text-foreground hover:bg-foreground/10"
-            >
-              📍 Use my current location
-            </Button>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-            <Button 
-              size="lg" 
-              className="bg-foreground text-background hover:bg-foreground/90 text-lg px-8 py-3"
-              asChild
-            >
-              <Link to="/report">Report a Problem</Link>
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="border-foreground text-foreground hover:bg-foreground/10 text-lg px-8 py-3"
-              asChild
-            >
-              <Link to="/map">View All Reports</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* How to Report Section */}
-      <section className="py-16 bg-background">
+      <section className="py-16 md:py-20 bg-blue-50 border-b border-blue-100">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-start">
-            {/* Left Column - How to Report */}
-            <div>
-              <h2 className="text-3xl font-bold text-foreground mb-8">
-                How to report a problem
-              </h2>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
-                    1
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Enter a nearby postcode, or street name and area</h3>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
-                    2
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Locate the problem on a map of the area</h3>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
-                    3
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Enter details of the problem</h3>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-lg">
-                    4
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">We send it to the council on your behalf</h3>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Stats */}
-              <div className="mt-12 grid grid-cols-3 gap-6 text-center">
-                <div>
-                  <div className="text-3xl font-bold text-foreground">{stats[0].value}</div>
-                  <div className="text-sm text-muted-foreground">{stats[0].label}</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-foreground">{stats[1].value}</div>
-                  <div className="text-sm text-muted-foreground">Fixed in Past Month</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-foreground">{stats[2].value}</div>
-                  <div className="text-sm text-muted-foreground">Updates on Reports</div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right Column - Recent Reports */}
-            <div>
-              <h2 className="text-3xl font-bold text-foreground mb-8">
-                Recently reported problems
-              </h2>
-              <div className="space-y-4">
-                <div className="border-l-4 border-primary pl-4 py-2">
-                  <div className="text-sm text-muted-foreground mb-1">By roadside</div>
-                  <div className="text-sm text-muted-foreground mb-2">09:51 today, last updated 09:51 today</div>
-                  <h4 className="font-medium text-foreground">Sunken drain cover o/s 72 Chertsey Road</h4>
-                </div>
-                <div className="border-l-4 border-primary pl-4 py-2">
-                  <div className="text-sm text-muted-foreground mb-2">09:46 today</div>
-                  <h4 className="font-medium text-foreground">Manhole cover at entrance to Hancock drive is loose and rattles every time a vehicle goes over it has been like this for months</h4>
-                </div>
-                <div className="border-l-4 border-primary pl-4 py-2">
-                  <div className="text-sm text-muted-foreground mb-1">09:45 today, last updated 10:04 today</div>
-                  <h4 className="font-medium text-foreground">Street tree knocked over</h4>
-                </div>
-                <div className="border-l-4 border-primary pl-4 py-2">
-                  <div className="text-sm text-muted-foreground mb-1">09:45 today, last updated 09:45 today</div>
-                  <h4 className="font-medium text-foreground">Top of fulwood ave</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
-              How CivicSync Works
+          <div className="max-w-2xl mx-auto text-center mb-10">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-blue-900 tracking-tight">
+              Report, view, and resolve local civic problems
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Our platform connects citizens with local government to identify, report, and resolve civic issues efficiently
+            <p className="text-lg text-blue-700 font-medium">
+              For complaints about roads, streetlights, water, sanitation, and civic amenities
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={index} className="shadow-civic hover:shadow-civic-strong transition-all duration-300 hover:scale-105">
-                  <CardHeader>
-                    <div className="w-12 h-12 bg-gradient-civic rounded-lg flex items-center justify-center mb-4">
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-base">
-                      {feature.description}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="max-w-xl mx-auto flex flex-col items-center gap-2">
+            <input 
+              type="text" 
+              placeholder="Enter locality, problem, or area (e.g. 'water leak MG road')"
+              className="rounded-none w-full px-5 py-3 border border-blue-200 shadow bg-white focus:border-blue-600 text-lg text-blue-900 outline-none font-medium"
+            />
+            <div className="flex w-full justify-between gap-2 mt-2">
+              <Button className="rounded-none w-1/2 bg-blue-700 text-white font-semibold hover:bg-blue-800">
+                Go
+              </Button>
+              <Button variant="outline" className="rounded-none w-1/2 border-blue-700 text-blue-700 hover:bg-blue-100">
+                📍 Use my current location
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-hero text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-6">
-            Ready to Make a Difference?
-          </h2>
-          <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">
-            Join thousands of citizens already using CivicSync to improve their communities. 
-            Report your first issue today!
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
-              asChild
+      {/* Stats Cards */}
+      <section className="py-8 bg-white">
+        <div className="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          {stats.map((stat, i) => (
+            <div key={stat.label}
+              className="flex flex-col py-6 gap-2 border border-blue-100 bg-blue-50 rounded-lg shadow-civic"
             >
-              <Link to="/report">Get Started</Link>
-            </Button>
-            <Button 
-              size="lg" 
-              className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
-              asChild
-            >
-              <Link to="/login">Sign in</Link>
-            </Button>
-          </div>
+              <stat.icon className="w-7 h-7 mx-auto text-blue-700" />
+              <div className="text-2xl font-bold text-blue-900">{stat.value}</div>
+              <div className="text-xs uppercase tracking-wide text-blue-600">{stat.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-card border-t border-border py-12">
+      {/* Features */}
+      <section className="py-12 md:py-16 bg-gradient-to-b from-blue-50 via-[#f8fafc] to-blue-50">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-gradient-civic rounded-lg flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-foreground">CivicSync</span>
-            </div>
-            <div className="text-muted-foreground text-center md:text-right">
-              <p>&copy; 2024 CivicSync. Making cities better, together.</p>
-            </div>
+          <h3 className="text-3xl font-bold text-blue-900 mb-8 text-center tracking-tight">Why use the official portal?</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {features.map(({icon: Icon, title, description}) => (
+              <Card key={title} className="shadow-civic hover:shadow-civic-strong border border-blue-100 transition-all duration-200">
+                <CardHeader className="flex flex-col items-center mt-6 mb-2">
+                  <div className="w-14 h-14 bg-blue-700 rounded-lg flex items-center justify-center mb-4 shadow-lg">
+                    <Icon className="w-7 h-7 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold text-blue-900">{title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base text-blue-800 leading-relaxed text-center mt-2 mb-4">
+                    {description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* How to Report & Recent Reports */}
+      <section className="py-12 md:py-16 bg-white border-t border-blue-100">
+        <div className="container mx-auto px-4 grid md:grid-cols-2 gap-20">
+          {/* How to Report */}
+          <div>
+            <h4 className="text-2xl font-bold text-blue-900 mb-6">How to file a complaint</h4>
+            <ol className="space-y-6 pl-5 border-l-4 border-blue-700">
+              <li className="relative pl-8">
+                <span className="absolute left-[-20px] top-0 font-bold bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center">1</span>
+                <span className="font-medium text-blue-900">Describe the civic issue &amp; choose location</span>
+              </li>
+              <li className="relative pl-8">
+                <span className="absolute left-[-20px] top-0 font-bold bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center">2</span>
+                <span className="font-medium text-blue-900">Add a photo or details if possible</span>
+              </li>
+              <li className="relative pl-8">
+                <span className="absolute left-[-20px] top-0 font-bold bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center">3</span>
+                <span className="font-medium text-blue-900">Submit - the issue goes directly to government officers</span>
+              </li>
+              <li className="relative pl-8">
+                <span className="absolute left-[-20px] top-0 font-bold bg-blue-700 text-white w-7 h-7 rounded-full flex items-center justify-center">4</span>
+                <span className="font-medium text-blue-900">Track status &amp; updates on portal</span>
+              </li>
+            </ol>
+          </div>
+          {/* Recently reported problems */}
+          <div>
+            <h4 className="text-2xl font-bold text-blue-900 mb-6">Recently Reported Problems</h4>
+            <ul className="space-y-6">
+              <li className="p-5 border-l-4 border-blue-700 bg-blue-50 rounded">
+                <div className="text-blue-800 font-semibold">Broken Streetlight, Nehru Road</div>
+                <div className="text-xs text-blue-600 mt-1">Today, 8:20 AM &middot; Status: Reported</div>
+              </li>
+              <li className="p-5 border-l-4 border-blue-700 bg-blue-50 rounded">
+                <div className="text-blue-800 font-semibold">Overflowing Dustbin, Railway Colony</div>
+                <div className="text-xs text-blue-600 mt-1">Yesterday, 3:10 PM &middot; Status: Pending</div>
+              </li>
+              <li className="p-5 border-l-4 border-blue-700 bg-blue-50 rounded">
+                <div className="text-blue-800 font-semibold">Water leakage, Sector 21</div>
+                <div className="text-xs text-blue-600 mt-1">Yesterday, 10:43 AM &middot; Status: In Progress</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Final Call to Action */}
+      <section className="py-12 md:py-18 bg-gradient-to-b from-blue-700 via-blue-800 to-blue-900">
+        <div className="container mx-auto px-4 text-center">
+          <h3 className="text-3xl md:text-4xl font-bold mb-4 text-white">Ready to help your city?</h3>
+          <p className="text-xl text-blue-100 max-w-2xl mx-auto mb-8">
+            Use the government’s official platform for transparent and fast civic issue resolution!
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="bg-white text-blue-900 font-bold text-lg px-12 py-6 rounded-none hover:bg-blue-100 border border-blue-900 shadow"
+          >
+            <Link to="/report">File a New Grievance Now</Link>
+          </Button>
+        </div>
+      </section>
     </div>
   );
 };
