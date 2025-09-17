@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card, CardContent, CardDescription, CardHeader, CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,11 @@ export default function AdminDashboard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showAfterImageModal, setShowAfterImageModal] = useState(false);
+  const [pendingResolve, setPendingResolve] = useState<string | null>(null);
+  const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const queryClient = useQueryClient();
 
   const { data: stats, isLoading: isLoadingStats, error: statsError } = useQuery({
@@ -60,13 +65,44 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateReportStatus = async (reportId: string, newStatus: string) => {
+  // MAIN LOGIC: Only allow "resolved" with after image
+  const updateReportStatus = async (reportId: string, newStatus: string, file?: File) => {
     try {
-      await api.put(`/reports/${reportId}`, { status: newStatus });
+      let data: any = { status: newStatus };
+      let config = {};
+      if (newStatus === "resolved" && file) {
+        data = new FormData();
+        data.append("status", "resolved");
+        data.append("afterImage", file);
+        config = { headers: { "Content-Type": "multipart/form-data" } };
+      }
+      await api.put(`/reports/${reportId}`, data, config);
       queryClient.invalidateQueries({ queryKey: ["allReports"] });
     } catch (error) {
-      console.error("Failed to update report status:", error);
+      alert("Failed to update report status: " + (error?.response?.data?.message || error.message));
     }
+  };
+
+  const handleStatusChange = (reportId: string, value: string) => {
+    if (value === "resolved") {
+      setPendingResolve(reportId);
+      setShowAfterImageModal(true);
+    } else {
+      updateReportStatus(reportId, value);
+    }
+  };
+  const onAfterImageSubmit = () => {
+    if (pendingResolve && afterImageFile) {
+      updateReportStatus(pendingResolve, "resolved", afterImageFile);
+      setShowAfterImageModal(false);
+      setPendingResolve(null);
+      setAfterImageFile(null);
+    }
+  };
+  const onAfterImageCancel = () => {
+    setShowAfterImageModal(false);
+    setPendingResolve(null);
+    setAfterImageFile(null);
   };
 
   const filteredReports =
@@ -122,14 +158,10 @@ export default function AdminDashboard() {
         </div>
         {/* Stats row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-          <StatCard icon={<FileText className="w-8 h-8 mb-1 text-blue-800" />}
-                    value={stats?.total ?? 0} label="Total Reports" />
-          <StatCard icon={<Clock className="w-8 h-8 mb-1 text-yellow-700" />}
-                    value={stats?.pending ?? 0} label="Pending" border="border-yellow-200" color="text-yellow-700" />
-          <StatCard icon={<AlertTriangle className="w-8 h-8 mb-1 text-blue-800" />}
-                    value={stats?.inProgress ?? 0} label="In Progress" border="border-blue-200" />
-          <StatCard icon={<CheckCircle className="w-8 h-8 mb-1 text-green-700" />}
-                    value={stats?.resolved ?? 0} label="Resolved" border="border-green-200" color="text-green-800" />
+          <StatCard icon={<FileText className="w-8 h-8 mb-1 text-blue-800" />} value={stats?.total ?? 0} label="Total Reports" />
+          <StatCard icon={<Clock className="w-8 h-8 mb-1 text-yellow-700" />} value={stats?.pending ?? 0} label="Pending" border="border-yellow-200" color="text-yellow-700" />
+          <StatCard icon={<AlertTriangle className="w-8 h-8 mb-1 text-blue-800" />} value={stats?.inProgress ?? 0} label="In Progress" border="border-blue-200" />
+          <StatCard icon={<CheckCircle className="w-8 h-8 mb-1 text-green-700" />} value={stats?.resolved ?? 0} label="Resolved" border="border-green-200" color="text-green-800" />
         </div>
 
         {/* Search/filter */}
@@ -239,6 +271,18 @@ export default function AdminDashboard() {
                             {report.severity && (
                               <div className="text-xs text-blue-700">Severity: Level {report.severity}</div>
                             )}
+                            {report.afterImageUrl && (
+                              <div className="mt-2">
+                                <span className="text-xs text-green-700 font-semibold">After (Resolved):</span>
+                                <img
+                                  src={report.afterImageUrl}
+                                  alt="After"
+                                  className="w-16 h-16 object-cover rounded border border-green-200 mt-1"
+                                  onClick={() => setSelectedImage(report.afterImageUrl!)}
+                                  style={{ cursor: "pointer" }}
+                                />
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         {/* Location */}
@@ -271,35 +315,34 @@ export default function AdminDashboard() {
                         </TableCell>
                         {/* Status */}
                         <TableCell className="py-3 px-4 align-top">
-  <Select
-    value={report.status}
-    onValueChange={value => updateReportStatus(report._id, value)}
-  >
-    <SelectTrigger className={`w-32 h-8 bg-white border border-blue-200 rounded shadow-none text-sm font-semibold
-      ${report.status === "pending" ? "text-yellow-700" : report.status === "in-progress" ? "text-blue-700" : "text-green-700"}
-    `}>
-      <SelectValue>
-        {report.status === "pending"
-          ? "Pending"
-          : report.status === "in-progress"
-            ? "In Progress"
-            : "Resolved"}
-      </SelectValue>
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="pending">
-        <span className="text-yellow-700 font-semibold">Pending</span>
-      </SelectItem>
-      <SelectItem value="in-progress">
-        <span className="text-blue-700 font-semibold">In Progress</span>
-      </SelectItem>
-      <SelectItem value="resolved">
-        <span className="text-green-700 font-semibold">Resolved</span>
-      </SelectItem>
-    </SelectContent>
-  </Select>
-</TableCell>
-
+                          <Select
+                            value={report.status}
+                            onValueChange={value => handleStatusChange(report._id, value)}
+                          >
+                            <SelectTrigger className={`w-32 h-8 bg-white border border-blue-200 rounded shadow-none text-sm font-semibold
+                                ${report.status === "pending" ? "text-yellow-700" : report.status === "in-progress" ? "text-blue-700" : "text-green-700"}
+                              `}>
+                              <SelectValue>
+                                {report.status === "pending"
+                                  ? "Pending"
+                                  : report.status === "in-progress"
+                                    ? "In Progress"
+                                    : "Resolved"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">
+                                <span className="text-yellow-700 font-semibold">Pending</span>
+                              </SelectItem>
+                              <SelectItem value="in-progress">
+                                <span className="text-blue-700 font-semibold">In Progress</span>
+                              </SelectItem>
+                              <SelectItem value="resolved">
+                                <span className="text-green-700 font-semibold">Resolved</span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         {/* Priority */}
                         <TableCell className="py-3 px-4 align-top">
                           {report.priority && (
@@ -334,6 +377,32 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Modal for uploading after image */}
+        {showAfterImageModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+              <h2 className="text-lg font-bold mb-2 text-blue-900">Upload After Image (required to resolve)</h2>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={e => setAfterImageFile(e.target.files?.[0] || null)}
+              />
+              {afterImageFile && (
+                <img src={URL.createObjectURL(afterImageFile)} className="mt-4 rounded w-full max-h-60 object-contain border" alt="Preview" />
+              )}
+              <div className="flex gap-4 mt-4">
+                <Button onClick={onAfterImageSubmit} disabled={!afterImageFile}>
+                  Upload and Resolve
+                </Button>
+                <Button variant="outline" onClick={onAfterImageCancel}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Image Modal */}
         {selectedImage && (
           <div
@@ -362,7 +431,7 @@ export default function AdminDashboard() {
   );
 }
 
-// StatsCard helper
+// StatCard helper
 function StatCard({ icon, value, label, border, color = "" }: { icon: React.ReactNode, value: string | number, label: string, border?: string, color?: string }) {
   return (
     <div className={`bg-white rounded shadow flex flex-col items-center py-9 border ${border ? border : "border-blue-100"}`}>

@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Card, CardContent, CardHeader, CardTitle
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, MapPin, Calendar, AlertCircle, CheckCircle, Clock, Image as ImageIcon } from "lucide-react";
+import {
+  Eye, MapPin, Calendar, AlertCircle, CheckCircle, Clock, Image as ImageIcon
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
 
@@ -20,27 +24,18 @@ export default function MyIssues() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
-        return 'warning';
-      case 'in-progress':
-        return 'default';
-      case 'resolved':
-        return 'success';
-      default:
-        return 'secondary';
+      case 'pending':      return 'warning';
+      case 'in-progress':  return 'default';
+      case 'resolved':     return 'success';
+      default:             return 'secondary';
     }
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <Clock className="w-4 h-4" />;
-      case 'in-progress':
-        return <AlertCircle className="w-4 h-4" />;
-      case 'resolved':
-        return <CheckCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
+      case 'pending':     return <Clock className="w-4 h-4" />;
+      case 'in-progress': return <AlertCircle className="w-4 h-4" />;
+      case 'resolved':    return <CheckCircle className="w-4 h-4" />;
+      default:            return <Clock className="w-4 h-4" />;
     }
   };
 
@@ -54,7 +49,6 @@ export default function MyIssues() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -67,12 +61,12 @@ export default function MyIssues() {
     );
   }
 
-  const pendingCount = issues?.filter(issue => issue.status === 'pending').length || 0;
+  const pendingCount    = issues?.filter(issue => issue.status === 'pending').length || 0;
   const inProgressCount = issues?.filter(issue => issue.status === 'in-progress').length || 0;
-  const resolvedCount = issues?.filter(issue => issue.status === 'resolved').length || 0;
+  const resolvedCount   = issues?.filter(issue => issue.status === 'resolved').length || 0;
 
   const renderIssues = (filterStatus?: string) => {
-    const filteredIssues = filterStatus 
+    const filteredIssues = filterStatus
       ? issues?.filter(issue => issue.status === filterStatus)
       : issues;
 
@@ -116,28 +110,35 @@ export default function MyIssues() {
             <CardContent>
               <div className="space-y-4">
                 <p className="text-muted-foreground">{issue.description}</p>
-                
-                {/* Display uploaded photo */}
-                {issue.imageUrl && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <ImageIcon className="w-4 h-4" />
-                      Attached Photo
-                    </div>
-                    <div className="relative">
-                      <img 
-                        src={issue.imageUrl} 
-                        alt="Issue photo" 
-                        className="w-full max-w-md h-48 object-cover rounded-lg border shadow-sm hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => window.open(issue.imageUrl, '_blank')}
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center opacity-0 hover:opacity-100">
-                        <Eye className="w-6 h-6 text-white" />
+                {/* BEFORE & AFTER images side-by-side */}
+                {(issue.imageUrl || issue.afterImageUrl) && (
+                  <div className="flex flex-wrap items-start gap-8 mt-2">
+                    {issue.imageUrl && (
+                      <div>
+                        <div className="font-semibold mb-1">Before</div>
+                        <img
+                          src={issue.imageUrl}
+                          alt="Before"
+                          className="w-36 h-24 object-cover rounded border shadow-sm mb-2"
+                          onClick={() => window.open(issue.imageUrl, '_blank')}
+                          style={{ cursor: "pointer" }}
+                        />
                       </div>
-                    </div>
+                    )}
+                    {issue.afterImageUrl && (
+                      <div>
+                        <div className="font-semibold mb-1">After</div>
+                        <img
+                          src={issue.afterImageUrl}
+                          alt="After"
+                          className="w-36 h-24 object-cover rounded border shadow-sm mb-2"
+                          onClick={() => window.open(issue.afterImageUrl, '_blank')}
+                          style={{ cursor: "pointer" }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
-
                 <div className="flex items-center justify-between pt-4">
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>Category: {issue.category}</span>
@@ -179,7 +180,6 @@ export default function MyIssues() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-civic">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -191,7 +191,6 @@ export default function MyIssues() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-civic">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -203,7 +202,6 @@ export default function MyIssues() {
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-civic">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -217,7 +215,7 @@ export default function MyIssues() {
           </Card>
         </div>
 
-        {/* Issues List */}
+        {/* Issues List with Tabs */}
         <Card className="shadow-civic-strong">
           <CardContent className="p-0">
             <Tabs defaultValue="all" className="w-full">
@@ -229,7 +227,6 @@ export default function MyIssues() {
                   <TabsTrigger value="resolved">Resolved</TabsTrigger>
                 </TabsList>
               </div>
-
               <div className="p-6">
                 <TabsContent value="all">
                   {renderIssues()}
