@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MapPin, FileText, Users, BarChart3, CheckCircle, Clock } from "lucide-react";
 
 const features = [
@@ -33,6 +33,17 @@ const stats = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  const handleReportClick = () => {
+    navigate('/login');
+  };
+
+  const handleLocationClick = () => {
+    // You can add location functionality here or also redirect to login
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb] w-full">
       {/* Hero Section */}
@@ -53,10 +64,17 @@ const Index = () => {
               className="rounded-none w-full px-5 py-3 border border-blue-200 shadow bg-white focus:border-blue-600 text-base md:text-lg text-blue-900 outline-none font-medium"
             />
             <div className="flex w-full flex-col gap-2 mt-2 sm:flex-row sm:justify-between">
-              <Button className="rounded-none w-full sm:w-1/2 bg-blue-700 text-white font-semibold hover:bg-blue-800">
-                Go
+              <Button 
+                onClick={handleReportClick}
+                className="rounded-none w-full sm:w-1/2 bg-blue-700 text-white font-semibold hover:bg-blue-800"
+              >
+                Report now
               </Button>
-              <Button variant="outline" className="rounded-none w-full sm:w-1/2 border-blue-700 text-blue-700 hover:bg-blue-100">
+              <Button 
+                onClick={handleLocationClick}
+                variant="outline" 
+                className="rounded-none w-full sm:w-1/2 border-blue-700 text-blue-700 hover:bg-blue-100"
+              >
                 📍 Use my current location
               </Button>
             </div>
@@ -154,14 +172,14 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <h3 className="text-2xl md:text-4xl font-bold mb-4 text-white">Ready to help your city?</h3>
           <p className="text-base md:text-xl text-blue-100 max-w-2xl mx-auto mb-8">
-            Use the government’s official platform for transparent and fast civic issue resolution!
+            Use the government's official platform for transparent and fast civic issue resolution!
           </p>
           <Button
-            asChild
+            onClick={handleReportClick}
             size="lg"
             className="bg-white text-blue-900 font-bold text-lg px-8 py-4 md:px-12 md:py-6 rounded-none hover:bg-blue-100 border border-blue-900 shadow"
           >
-            <Link to="/report">File a New Grievance Now</Link>
+            File a New Grievance Now
           </Button>
         </div>
       </section>
