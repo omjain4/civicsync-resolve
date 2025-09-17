@@ -14,7 +14,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const isActive = (path: string) => location.pathname === path;
 
   const navigation = [
-    { name: "Home", href: "/", icon: Home, show: true },
+    //{ name: "Home", href: "/", icon: Home, show: true },
     {
       name: "Report Issue",
       href: "/report",
@@ -23,7 +23,12 @@ export function Layout({ children }: { children: ReactNode }) {
         isAuthenticated &&
         (isLoading || !user ? true : user.role !== "admin"),
     },
-    { name: "View Map", href: "/map", icon: MapPin, show: true },
+     {
+    name: "View Map",
+    href: "/map", 
+    icon: MapPin,
+    show: isAuthenticated, // Only show when logged in
+  },
     {
       name: "My Issues",
       href: "/my-issues",
@@ -50,17 +55,18 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* OFFICIAL GOV HEADER */}
       <header className="bg-white/95 border-b border-blue-100 shadow py-5">
         <div className="container mx-auto px-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="rounded bg-blue-800 px-2.5 py-1">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <span className="uppercase tracking-wider font-bold text-blue-900 text-xl md:text-2xl">
-              Civicsync
-            </span>
-            <span className="hidden md:block ml-3 text-sm text-blue-700/70 font-semibold italic">
-              An official city platform
-            </span>
-          </div>
+          <Link to="/" className="flex items-center space-x-3 group cursor-pointer">
+  <div className="rounded bg-blue-800 px-2.5 py-1 group-hover:bg-blue-900 transition">
+    <MapPin className="w-6 h-6 text-white" />
+  </div>
+  <span className="uppercase tracking-wider font-bold text-blue-900 text-xl md:text-2xl">
+    Civicsync
+  </span>
+  <span className="hidden md:block ml-3 text-sm text-blue-700/70 font-semibold italic">
+    An official city platform
+  </span>
+</Link>
+
 
           <div className="flex items-center gap-4">
 
