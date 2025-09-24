@@ -254,7 +254,7 @@ export default function ReportIssue() {
               </Select>
             </div>
             <div>
-              <Label>Photo (optional)</Label>
+              <Label>Photo</Label>
               <div className="border-2 border-dashed border-blue-200 rounded-lg p-7 text-center relative bg-blue-50">
                 {photoPreview ? (
                   <div className="space-y-3">
