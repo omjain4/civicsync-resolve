@@ -16,6 +16,18 @@ const fetchUserReports = async () => {
   return data.data;
 };
 
+// Geocode using Nominatim API
+const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (data && data[0]) {
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  }
+  return null;
+};
+
+
 export default function MyIssues() {
   const { data: issues, isLoading, error } = useQuery({
     queryKey: ['myIssues'],

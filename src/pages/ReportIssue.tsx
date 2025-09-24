@@ -29,6 +29,17 @@ const issueCategories = [
   "Encroachment on Footpaths",
   "Other"
 ];
+// Geocoding function for address search
+const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
+  if (!address) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+  const response = await fetch(url);
+  const results = await response.json();
+  if (results && results.length > 0) {
+    return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+  }
+  return null;
+};
 
 // Image compression function
 const compressImage = (file: File, quality: number = 0.8): Promise<File> => {
@@ -272,25 +283,49 @@ export default function ReportIssue() {
               </div>
             </div>
             <div>
-              <Label htmlFor="location">Location</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="location"
-                  placeholder="Enter address or use GPS"
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  className="border-blue-200"
-                />
-                <Button
-                  type="button"
-                  onClick={handleGetLocation}
-                  disabled={isGettingLocation}
-                  className="bg-blue-700 text-white"
-                >
-                  {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
+  <Label htmlFor="location">Location</Label>
+  <div className="flex gap-2">
+    <Input
+      id="location"
+      placeholder="Enter address or use GPS"
+      value={address}
+      onChange={e => setAddress(e.target.value)}
+      className="border-blue-200"
+    />
+    <Button
+      type="button"
+      onClick={handleGetLocation}
+      disabled={isGettingLocation}
+      className="bg-blue-700 text-white"
+    >
+      {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+    </Button>
+    <Button
+      type="button"
+      onClick={async () => {
+        const coords = await geocodeAddress(address);
+        if (coords) {
+          setLocation(coords);
+          toast({
+            title: "Address Located! 📍",
+            description: `Latitude: ${coords.lat}, Longitude: ${coords.lng}`,
+          });
+        } else {
+          toast({
+            title: "Address Not Found",
+            description: "No coordinates found for this address.",
+            variant: "destructive"
+          });
+        }
+      }}
+      disabled={!address}
+      className="bg-blue-500 text-white"
+    >
+      Lookup Address
+    </Button>
+  </div>
+</div>
+
           </div>
         </div>
       );
