@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Card, CardContent, CardHeader, CardTitle
 } from "@/components/ui/card";
@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Eye, MapPin, Calendar, AlertCircle, CheckCircle, Clock, Image as ImageIcon
+  Eye, MapPin, Calendar, AlertCircle, CheckCircle, Clock, Replace, Trash2, Loader2,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import api from "../lib/api";
 
 const fetchUserReports = async () => {
@@ -16,24 +17,82 @@ const fetchUserReports = async () => {
   return data.data;
 };
 
-// Geocode using Nominatim API
-const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (data && data[0]) {
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-  }
-  return null;
-};
-
-
 export default function MyIssues() {
+  const [reportToUpdate, setReportToUpdate] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: issues, isLoading, error } = useQuery({
     queryKey: ['myIssues'],
     queryFn: fetchUserReports
   });
 
+  const deleteImageMutation = useMutation({
+    mutationFn: (reportId: string) => api.delete(`/reports/${reportId}/image`),
+    onSuccess: () => {
+      toast({ title: "Image Deleted", description: "Your report image has been removed." });
+      queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Deletion Failed", description: err.response?.data?.message });
+    }
+  });
+
+  const replaceImageMutation = useMutation({
+    mutationFn: ({ reportId, photo }: { reportId: string, photo: File }) => {
+      const formData = new FormData();
+      formData.append('photo', photo);
+      return api.put(`/reports/${reportId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Image Replaced", description: "Your report has been updated with the new image." });
+      queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Replacement Failed", description: err.response?.data?.message });
+    }
+  });
+  
+  const deleteReportMutation = useMutation({
+    mutationFn: (reportId: string) => api.delete(`/reports/${reportId}`),
+    onSuccess: () => {
+        toast({ title: "Report Deleted", description: "Your report has been successfully withdrawn." });
+        queryClient.invalidateQueries({ queryKey: ["myIssues"] });
+    },
+    onError: (err: any) => {
+        toast({ variant: "destructive", title: "Deletion Failed", description: err.response?.data?.message || "Could not delete report." });
+    },
+  });
+
+  const handleReplaceClick = (reportId: string) => {
+    setReportToUpdate(reportId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && reportToUpdate) {
+      replaceImageMutation.mutate({ reportId: reportToUpdate, photo: file });
+    }
+    event.target.value = '';
+    setReportToUpdate(null);
+  };
+
+  const handleDeleteImageClick = (reportId: string) => {
+    if (window.confirm("Are you sure you want to delete this image?")) {
+      deleteImageMutation.mutate(reportId);
+    }
+  };
+  
+  const handleDeleteReportClick = (reportId: string) => {
+    if (window.confirm("Are you sure you want to permanently delete this report?")) {
+      deleteReportMutation.mutate(reportId);
+    }
+  };
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':      return 'warning';
@@ -42,127 +101,96 @@ export default function MyIssues() {
       default:             return 'secondary';
     }
   };
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':     return <Clock className="w-4 h-4" />;
-      case 'in-progress': return <AlertCircle className="w-4 h-4" />;
-      case 'resolved':    return <CheckCircle className="w-4 h-4" />;
-      default:            return <Clock className="w-4 h-4" />;
-    }
-  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="mt-4 text-muted-foreground">Loading your issues...</p>
-        </div>
+        <Loader2 className="w-12 h-12 animate-spin" />
       </div>
     );
   }
-
+  
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Failed to load issues</h2>
-          <p className="text-muted-foreground">Please try again later.</p>
+        <div className="min-h-screen flex items-center justify-center text-center">
+            <div>
+                <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
+                <h2 className="text-2xl font-bold">Failed to load issues</h2>
+            </div>
         </div>
-      </div>
     );
   }
-
-  const pendingCount    = issues?.filter(issue => issue.status === 'pending').length || 0;
-  const inProgressCount = issues?.filter(issue => issue.status === 'in-progress').length || 0;
-  const resolvedCount   = issues?.filter(issue => issue.status === 'resolved').length || 0;
 
   const renderIssues = (filterStatus?: string) => {
     const filteredIssues = filterStatus
-      ? issues?.filter(issue => issue.status === filterStatus)
+      ? issues?.filter((issue: any) => issue.status === filterStatus)
       : issues;
 
     if (!filteredIssues || filteredIssues.length === 0) {
       return (
         <div className="text-center py-10">
-          <AlertCircle className="w-14 h-14 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No issues found for this category</h3>
-          <p className="text-muted-foreground">Your reported issues will appear here once submitted.</p>
+          <h3 className="text-lg font-semibold">No issues found for this category</h3>
         </div>
       );
     }
 
     return (
       <div className="grid gap-5">
-        {filteredIssues.map((issue) => (
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+        {filteredIssues.map((issue: any) => (
           <Card key={issue._id} className="shadow-civic">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                <div className="space-y-2">
-                  <CardTitle className="text-base md:text-lg">{issue.title || issue.category}</CardTitle>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {issue.address}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(issue.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
+                <div className="flex justify-between items-start">
+                    <CardTitle>{issue.title || issue.category}</CardTitle>
+                    <Badge variant={getStatusColor(issue.status) as any}>{issue.status}</Badge>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={getStatusColor(issue.status) as any} className="flex items-center gap-1">
-                    {getStatusIcon(issue.status)}
-                    <span className="hidden sm:inline">
-                      {issue.status.replace('-', ' ')}
-                    </span>
-                    <span className="sm:hidden capitalize">{issue.status[0]}</span>
-                  </Badge>
-                </div>
-              </div>
+                <div className="text-sm text-muted-foreground">{issue.address}</div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-xs md:text-sm text-muted-foreground">{issue.description}</p>
-                {/* BEFORE & AFTER images stacked on mobile, side-by-side on larger screens */}
-                {(issue.imageUrl || issue.afterImageUrl) && (
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mt-2">
+                <p className="text-sm text-muted-foreground">{issue.description}</p>
+                <div className="flex gap-4">
                     {issue.imageUrl && (
-                      <div className="w-full sm:w-auto text-center sm:text-left">
-                        <div className="font-semibold text-xs mb-1">Before</div>
-                        <img
-                          src={issue.imageUrl}
-                          alt="Before"
-                          className="w-full max-w-xs sm:w-36 sm:h-24 object-cover rounded border shadow-sm mb-2 cursor-pointer"
-                          onClick={() => window.open(issue.imageUrl, '_blank')}
-                        />
+                      <div>
+                        <p className="font-semibold text-xs mb-1">Before</p>
+                        <img src={issue.imageUrl} alt="Before" className="w-36 h-24 object-cover rounded border"/>
+                        {issue.status === 'pending' && (
+                           <div className="flex gap-2 mt-2">
+                             <Button size="sm" variant="outline" onClick={() => handleReplaceClick(issue._id)} disabled={replaceImageMutation.isPending}>
+                               {replaceImageMutation.isPending && reportToUpdate === issue._id ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Replace className="w-4 h-4 mr-1"/>}
+                               Replace
+                             </Button>
+                             <Button size="sm" variant="destructive" onClick={() => handleDeleteImageClick(issue._id)} disabled={deleteImageMutation.isPending}>
+                               {deleteImageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Trash2 className="w-4 h-4 mr-1"/>}
+                               Delete
+                             </Button>
+                           </div>
+                        )}
                       </div>
                     )}
                     {issue.afterImageUrl && (
-                      <div className="w-full sm:w-auto text-center sm:text-left">
-                        <div className="font-semibold text-xs mb-1">After</div>
-                        <img
-                          src={issue.afterImageUrl}
-                          alt="After"
-                          className="w-full max-w-xs sm:w-36 sm:h-24 object-cover rounded border shadow-sm mb-2 cursor-pointer"
-                          onClick={() => window.open(issue.afterImageUrl, '_blank')}
-                        />
-                      </div>
+                       <div>
+                         <p className="font-semibold text-xs mb-1">After (Resolved)</p>
+                         <img src={issue.afterImageUrl} alt="After" className="w-36 h-24 object-cover rounded border"/>
+                       </div>
                     )}
-                  </div>
-                )}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-2">
-                  <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                    <span>Category: {issue.category}</span>
-                    {issue.severity && <span>Severity: Level {issue.severity}</span>}
-                  </div>
-                  <Button variant="outline" size="sm" className="mt-2 sm:mt-0">
-                    <Eye className="w-4 h-4 mr-1" />
-                    View Details
-                  </Button>
                 </div>
+                {issue.status === 'pending' && (
+                    <div className="border-t pt-4">
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteReportClick(issue._id)}
+                            disabled={deleteReportMutation.isPending && deleteReportMutation.variables === issue._id}
+                        >
+                            {deleteReportMutation.isPending && deleteReportMutation.variables === issue._id
+                                ? <Loader2 className="w-4 h-4 animate-spin mr-2"/>
+                                : <Trash2 className="w-4 h-4 mr-2"/>
+                            }
+                            Delete Full Report
+                        </Button>
+                    </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -173,93 +201,27 @@ export default function MyIssues() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 w-full">
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <div className="mb-5 sm:mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-3">My Issues</h1>
-          <p className="text-sm sm:text-lg text-muted-foreground">
-            Track the status and progress of your reported civic issues
-          </p>
+        <div className="container mx-auto px-4 py-8">
+            <h1 className="text-4xl font-bold mb-8">My Issues</h1>
+            <Card>
+                <CardContent className="p-0">
+                    <Tabs defaultValue="all" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="all">All</TabsTrigger>
+                            <TabsTrigger value="pending">Pending</TabsTrigger>
+                            <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+                            <TabsTrigger value="resolved">Resolved</TabsTrigger>
+                        </TabsList>
+                        <div className="p-6">
+                            <TabsContent value="all">{renderIssues()}</TabsContent>
+                            <TabsContent value="pending">{renderIssues('pending')}</TabsContent>
+                            <TabsContent value="in-progress">{renderIssues('in-progress')}</TabsContent>
+                            <TabsContent value="resolved">{renderIssues('resolved')}</TabsContent>
+                        </div>
+                    </Tabs>
+                </CardContent>
+            </Card>
         </div>
-
-        {/* Stats Cards - collapse to two cols or 1 on mobile */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
-          <Card className="shadow-civic">
-            <CardContent className="p-3 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg md:text-2xl font-bold">{pendingCount}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Pending</p>
-                </div>
-                <Clock className="w-6 h-6 md:w-8 md:h-8 text-warning" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-civic">
-            <CardContent className="p-3 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg md:text-2xl font-bold">{inProgressCount}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">In Progress</p>
-                </div>
-                <AlertCircle className="w-6 h-6 md:w-8 md:h-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-civic">
-            <CardContent className="p-3 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg md:text-2xl font-bold">{resolvedCount}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Resolved</p>
-                </div>
-                <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-success" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-civic">
-            <CardContent className="p-3 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg md:text-2xl font-bold">{issues?.length || 0}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Reports</p>
-                </div>
-                <Eye className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Issues List with Tabs */}
-        <Card className="shadow-civic-strong">
-          <CardContent className="p-0">
-            <Tabs defaultValue="all" className="w-full">
-              <div className="px-1 sm:px-6 pt-4 sm:pt-6">
-                <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full mb-2 sm:mb-0">
-                  <TabsTrigger value="all">All Issues</TabsTrigger>
-                  <TabsTrigger value="pending">Pending</TabsTrigger>
-                  <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-                  <TabsTrigger value="resolved">Resolved</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="p-3 sm:p-6">
-                <TabsContent value="all">
-                  {renderIssues()}
-                </TabsContent>
-                <TabsContent value="pending">
-                  {renderIssues('pending')}
-                </TabsContent>
-                <TabsContent value="in-progress">
-                  {renderIssues('in-progress')}
-                </TabsContent>
-                <TabsContent value="resolved">
-                  {renderIssues('resolved')}
-                </TabsContent>
-              </div>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
-  
