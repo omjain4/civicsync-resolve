@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
+import { useToast } from "@/hooks/use-toast";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -127,6 +128,7 @@ export default function MapView() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const PUNE_CENTER: [number, number] = [18.5204, 73.8567];
 
   const { data: issues = [], isLoading, error } = useQuery<Report[]>({
@@ -159,6 +161,17 @@ export default function MapView() {
     (selectedStatus === "all" || issue.status === selectedStatus)
   );
 
+  const handleMarkerClick = (issue: Report) => {
+    if (issue.imageUrl) {
+        setLightboxImage(issue.imageUrl);
+    } else {
+        setSelectedIssue(issue); // Open details if no image
+        toast({
+            description: "This report has no image. Opening details view.",
+        })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {selectedIssue && <IssueDetailModal issue={selectedIssue} onClose={() => setSelectedIssue(null)} />}
@@ -167,7 +180,7 @@ export default function MapView() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold">City Issues Map</h1>
-          <p className="text-lg text-muted-foreground">Click on an issue's image or a map marker to see details.</p>
+          <p className="text-lg text-muted-foreground">Click an issue's image for a preview, or a map marker to see its photo.</p>
         </div>
 
         <Card className="mb-8">
@@ -192,7 +205,7 @@ export default function MapView() {
                                     <Marker 
                                         key={issue._id} 
                                         position={position}
-                                        eventHandlers={{ click: () => setSelectedIssue(issue) }}
+                                        eventHandlers={{ click: () => handleMarkerClick(issue) }}
                                     />
                                 )
                             })}
@@ -237,7 +250,9 @@ export default function MapView() {
                                     <span className="ml-2">{issue.upvotes.length}</span>
                                 </Button>
                             </div>
-                            {/* "View Details" button has been removed as requested */}
+                            <div className="text-right mt-2">
+                                <Button variant="link" size="sm" onClick={() => setSelectedIssue(issue)}>View Details</Button>
+                            </div>
                         </div>
                         )
                     })}
