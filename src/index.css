@@ -1,85 +1,85 @@
-@import "leaflet/dist/leaflet.css";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  @import "leaflet/dist/leaflet.css";
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
 
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 84% 4.9%;
+  @layer base {
+    :root {
+      --background: 0 0% 100%;
+      --foreground: 222 84% 4.9%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 84% 4.9%;
+      --popover: 0 0% 100%;
+      --popover-foreground: 222 84% 4.9%;
 
-    /* Blue Theme - Inspired by CivicConnect */
-    --primary: 217 91% 60%; /* Blue */
-    --primary-foreground: 0 0% 98%;
-    --primary-light: 217 91% 85%;
-    --primary-dark: 217 91% 45%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 217 91% 85%;
-    --accent-foreground: 217 91% 10%;
+      /* Blue Theme - Inspired by CivicConnect */
+      --primary: 217 91% 60%; /* Blue */
+      --primary-foreground: 0 0% 98%;
+      --primary-light: 217 91% 85%;
+      --primary-dark: 217 91% 45%;
+      --secondary: 210 40% 96%;
+      --secondary-foreground: 222 84% 4.9%;
+      --muted: 210 40% 96%;
+      --muted-foreground: 215 16% 47%;
+      --accent: 217 91% 85%;
+      --accent-foreground: 217 91% 10%;
 
-    /* Status Colors */
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+      /* Status Colors */
+      --success: 142 71% 45%;
+      --success-foreground: 0 0% 100%;
+      --warning: 38 92% 50%;
+      --warning-foreground: 0 0% 100%;
+      --destructive: 0 84% 60%;
+      --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+      --border: 214 32% 91%;
+      --input: 214 32% 91%;
+      --ring: 217 91% 60%;
 
-    /* Blue Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(217 91% 50%) 50%, hsl(217 91% 35%) 100%);
-    --gradient-civic: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
+      /* Blue Gradients */
+      --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
+      --gradient-hero: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(217 91% 50%) 50%, hsl(217 91% 35%) 100%);
+      --gradient-civic: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
 
-    /* Shadows with blue tint */
-    --shadow-civic: 0 4px 6px -1px hsl(217 91% 60% / 0.1), 0 2px 4px -1px hsl(217 91% 60% / 0.06);
-    --shadow-civic-strong: 0 10px 15px -3px hsl(217 91% 60% / 0.15), 0 4px 6px -2px hsl(217 91% 60% / 0.1);
+      /* Shadows with blue tint */
+      --shadow-civic: 0 4px 6px -1px hsl(217 91% 60% / 0.1), 0 2px 4px -1px hsl(217 91% 60% / 0.06);
+      --shadow-civic-strong: 0 10px 15px -3px hsl(217 91% 60% / 0.15), 0 4px 6px -2px hsl(217 91% 60% / 0.1);
 
-    --radius: 0.5rem;
+      --radius: 0.5rem;
+    }
+
+    .dark {
+      --background: 222.2 84% 4.9%;
+      --foreground: 210 40% 98%;
+      --primary: 217 91% 60%;
+      --primary-foreground: 222.2 84% 4.9%;
+      /* ... keep other dark theme values */
+    }
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222.2 84% 4.9%;
-    /* ... keep other dark theme values */
+  @layer base {
+    * {
+      @apply border-border;
+    }
+    body {
+      @apply bg-background text-foreground;
+    }
   }
-}
 
-@layer base {
-  * {
-    @apply border-border;
+  /* Blue theme custom classes */
+  .bg-gradient-civic {
+    background: var(--gradient-civic);
   }
-  body {
-    @apply bg-background text-foreground;
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
   }
-}
 
-/* Blue theme custom classes */
-.bg-gradient-civic {
-  background: var(--gradient-civic);
-}
+  .shadow-civic {
+    box-shadow: var(--shadow-civic);
+  }
 
-.bg-gradient-hero {
-  background: var(--gradient-hero);
-}
-
-.shadow-civic {
-  box-shadow: var(--shadow-civic);
-}
-
-.shadow-civic-strong {
-  box-shadow: var(--shadow-civic-strong);
-}
+  .shadow-civic-strong {
+    box-shadow: var(--shadow-civic-strong);
+  }

@@ -12,6 +12,7 @@ import MapView from "./pages/MapView";
 import MyIssues from "./pages/MyIssues";
 import AdminDashboard from "./pages/AdminDashboard";
 import Analytics from "./pages/Analytics";
+import AssignmentBoard from "./pages/AssignmentBoard";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -52,6 +53,7 @@ const App = () => (
             {/* Protected Routes for Admins only */}
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
+              <Route path="/assignment-board" element={<Layout><AssignmentBoard /></Layout>} />
               <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
             </Route>
             
