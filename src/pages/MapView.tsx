@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Filter, Calendar, ThumbsUp, X, Loader2, ZoomIn } from "lucide-react";
+import { MapPin, Filter, Calendar, ThumbsUp, Loader2, ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
-import { useToast } from "@/hooks/use-toast";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -34,101 +33,62 @@ interface Report {
   location?: { coordinates: [number, number] }; // [longitude, latitude]
 }
 
-// --- HELPER COMPONENT TO FIX MAP SIZING IN MODAL ---
-function MapResizer() {
-  const map = useMap();
-  useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 100);
-    return () => clearTimeout(timer);
-  }, [map]);
-  return null;
-}
-
-// --- NEW IMAGE LIGHTBOX COMPONENT ---
-const ImageLightbox = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void; }) => {
+// --- NEW IN-PANEL DETAIL VIEW COMPONENT ---
+const IssueDetailView = ({
+    issue,
+    onBack,
+    onUpvote,
+    isUpvoting,
+    hasUpvoted,
+    isAuthenticated,
+}: {
+    issue: Report;
+    onBack: () => void;
+    onUpvote: (id: string) => void;
+    isUpvoting: boolean;
+    hasUpvoted: boolean;
+    isAuthenticated: boolean;
+}) => {
     return (
-        <div className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:w-2/5 z-40 bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center animate-in slide-in-from-right">
-            <div className="relative w-full h-full">
-                <Button variant="secondary" size="icon" className="absolute top-2 right-2 rounded-full z-50" onClick={onClose}><X className="w-5 h-5"/></Button>
-                <img src={imageUrl} alt="Enlarged issue" className="w-full h-full object-contain rounded-lg"/>
+        <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+                {issue.imageUrl && (
+                    <img src={issue.imageUrl} alt={issue.category} className="w-full h-48 object-cover rounded-lg"/>
+                )}
+                <div>
+                    <h3 className="font-semibold text-lg">{issue.category}</h3>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><MapPin className="w-4 h-4"/>{issue.address}</p>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-sm mb-1">Description</h4>
+                    <p className="text-sm text-muted-foreground">{issue.description}</p>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                    Reported on {new Date(issue.createdAt).toLocaleDateString()}
+                </div>
+            </div>
+            <div className="border-t pt-4 mt-4 flex justify-between items-center">
+                <Button variant="ghost" onClick={onBack}>
+                    <ArrowLeft className="w-4 h-4 mr-2"/>
+                    Back to list
+                </Button>
+                <Button variant={hasUpvoted ? "default" : "outline"} disabled={!isAuthenticated || isUpvoting} onClick={() => onUpvote(issue._id)}>
+                    {isUpvoting ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <ThumbsUp className="w-4 h-4 mr-2"/>}
+                    {issue.upvotes.length} Upvotes
+                </Button>
             </div>
         </div>
-    )
-}
+    );
+};
 
-// --- DETAIL MODAL COMPONENT ---
-const IssueDetailModal = ({ issue, onClose }: { issue: Report; onClose: () => void; }) => {
-    const queryClient = useQueryClient();
-    const { user, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
-
-    const upvoteMutation = useMutation({
-        mutationFn: (reportId: string) => api.put<{ success: boolean; data: Report }>(`/reports/${reportId}/upvote`),
-        onSuccess: (response) => {
-            const updatedReport = response.data.data;
-            queryClient.setQueryData<Report[]>(['allReports'], (oldData) =>
-                oldData?.map((r) => r._id === updatedReport._id ? updatedReport : r)
-            );
-        }
-    });
-
-    const handleUpvoteClick = () => {
-        if (!isAuthenticated) navigate('/login');
-        else upvoteMutation.mutate(issue._id);
-    };
-    
-    const hasUpvoted = issue.upvotes.includes(user?._id ?? '');
-    const issuePosition: [number, number] = issue.location ? [issue.location.coordinates[1], issue.location.coordinates[0]] : [18.5204, 73.8567];
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col">
-                <CardHeader className="flex flex-row items-start justify-between">
-                    <div>
-                        <CardTitle>{issue.category}</CardTitle>
-                        <CardDescription>{issue.address}</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={onClose}><X className="w-5 h-5"/></Button>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <div>
-                            <h4 className="font-semibold mb-2">Description</h4>
-                            <p className="text-sm text-muted-foreground">{issue.description}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-4">
-                            {issue.imageUrl && <div><p className="font-semibold text-xs mb-1">Before</p><img src={issue.imageUrl} alt="Before" className="w-full h-40 object-cover rounded"/></div>}
-                            {issue.afterImageUrl && <div><p className="font-semibold text-xs text-green-600 mb-1">After (Resolved)</p><img src={issue.afterImageUrl} alt="After" className="w-full h-40 object-cover rounded border-2 border-green-500"/></div>}
-                        </div>
-                        <div className="text-xs text-muted-foreground border-t pt-2">Reported by {issue.user.email} on {new Date(issue.createdAt).toLocaleDateString()}</div>
-                    </div>
-                    <div className="space-y-4 flex flex-col">
-                        <div className="flex-1 w-full rounded-lg overflow-hidden border">
-                            <MapContainer center={issuePosition} zoom={15} className="h-full w-full">
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                <Marker position={issuePosition} />
-                                <MapResizer />
-                            </MapContainer>
-                        </div>
-                        <Button variant={hasUpvoted ? "default" : "outline"} disabled={upvoteMutation.isPending} onClick={handleUpvoteClick}>
-                            {upvoteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <ThumbsUp className="w-4 h-4 mr-2"/>}
-                            {issue.upvotes.length} Upvotes { !isAuthenticated && "(Login to vote)"}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    )
-}
 
 export default function MapView() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedIssue, setSelectedIssue] = useState<Report | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const PUNE_CENTER: [number, number] = [18.5204, 73.8567];
 
   const { data: issues = [], isLoading, error } = useQuery<Report[]>({
@@ -146,8 +106,20 @@ export default function MapView() {
         queryClient.setQueryData<Report[]>(['allReports'], (oldData) =>
             oldData?.map((r) => r._id === updatedReport._id ? updatedReport : r)
         );
+        // If the selected issue is the one being upvoted, update it in state too
+        if (selectedIssue?._id === updatedReport._id) {
+            setSelectedIssue(updatedReport);
+        }
     }
   });
+
+  const handleUpvoteClick = (issueId: string) => {
+    if (!isAuthenticated) {
+        navigate('/login');
+    } else {
+        upvoteMutation.mutate(issueId);
+    }
+  }
 
   const filteredIssues = issues.filter((issue) => {
     const categoryMatch = selectedCategory === "all" || issue.category === selectedCategory;
@@ -161,26 +133,12 @@ export default function MapView() {
     (selectedStatus === "all" || issue.status === selectedStatus)
   );
 
-  const handleMarkerClick = (issue: Report) => {
-    if (issue.imageUrl) {
-        setLightboxImage(issue.imageUrl);
-    } else {
-        setSelectedIssue(issue); // Open details if no image
-        toast({
-            description: "This report has no image. Opening details view.",
-        })
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
-      {selectedIssue && <IssueDetailModal issue={selectedIssue} onClose={() => setSelectedIssue(null)} />}
-      {lightboxImage && <ImageLightbox imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />}
-
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold">City Issues Map</h1>
-          <p className="text-lg text-muted-foreground">Click an issue's image for a preview, or a map marker to see its photo.</p>
+          <p className="text-lg text-muted-foreground">Click on an issue or a map marker to see details.</p>
         </div>
 
         <Card className="mb-8">
@@ -205,7 +163,7 @@ export default function MapView() {
                                     <Marker 
                                         key={issue._id} 
                                         position={position}
-                                        eventHandlers={{ click: () => handleMarkerClick(issue) }}
+                                        eventHandlers={{ click: () => setSelectedIssue(issue) }}
                                     />
                                 )
                             })}
@@ -214,48 +172,52 @@ export default function MapView() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader><CardTitle>Recent Issues</CardTitle><CardDescription>{filteredIssues.length} active issues found</CardDescription></CardHeader>
-                <CardContent>
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    {isLoading && <div className="text-center p-4"><Loader2 className="w-6 h-6 animate-spin mx-auto"/></div>}
-                    {error && <p className="text-destructive">Failed to load issues.</p>}
-                    {!isLoading && !error && filteredIssues.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">No active issues found.</p>
-                    )}
-                    {filteredIssues.map((issue) => {
-                        const hasUpvoted = issue.upvotes.includes(user?._id ?? '');
-                        return (
-                        <div key={issue._id} className="border rounded-lg p-4">
-                            <div className="flex justify-between items-start gap-4">
-                                {issue.imageUrl && (
-                                    <div className="relative group flex-shrink-0">
-                                        <img src={issue.imageUrl} alt="Issue" className="w-24 h-24 object-cover rounded"/>
-                                        <div 
-                                            onClick={() => setLightboxImage(issue.imageUrl!)}
-                                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded"
-                                        >
-                                            <ZoomIn className="w-6 h-6 text-white"/>
+            <Card className="flex flex-col">
+                <CardHeader>
+                    <CardTitle>{selectedIssue ? "Issue Details" : "Recent Issues"}</CardTitle>
+                    <CardDescription>{selectedIssue ? selectedIssue.category : `${filteredIssues.length} active issues found`}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1">
+                    <div className="h-[440px]">
+                        {selectedIssue ? (
+                            <IssueDetailView 
+                                issue={selectedIssue}
+                                onBack={() => setSelectedIssue(null)}
+                                onUpvote={handleUpvoteClick}
+                                isUpvoting={upvoteMutation.isPending}
+                                hasUpvoted={selectedIssue.upvotes.includes(user?._id ?? '')}
+                                isAuthenticated={isAuthenticated}
+                            />
+                        ) : (
+                            <div className="space-y-4 h-full overflow-y-auto pr-2">
+                                {isLoading && <div className="text-center p-4"><Loader2 className="w-6 h-6 animate-spin mx-auto"/></div>}
+                                {error && <p className="text-destructive">Failed to load issues.</p>}
+                                {!isLoading && !error && filteredIssues.length === 0 && (
+                                    <p className="text-center text-muted-foreground py-8">No active issues found.</p>
+                                )}
+                                {filteredIssues.map((issue) => {
+                                    const hasUpvoted = issue.upvotes.includes(user?._id ?? '');
+                                    return (
+                                    <div key={issue._id} className="border rounded-lg p-4 hover:bg-slate-100 cursor-pointer transition-colors" onClick={() => setSelectedIssue(issue)}>
+                                        <div className="flex justify-between items-start gap-4">
+                                            {issue.imageUrl && (
+                                                <img src={issue.imageUrl} alt="Issue" className="w-20 h-20 object-cover rounded flex-shrink-0"/>
+                                            )}
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold">{issue.category}</h3>
+                                                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="w-4 h-4"/>{issue.address}</p>
+                                                <Badge variant={issue.status === 'pending' ? 'warning' : 'default'} className="capitalize mt-2">{issue.status.replace('-', ' ')}</Badge>
+                                            </div>
+                                            <Button variant={hasUpvoted ? "default" : "outline"} size="sm" disabled={!isAuthenticated || upvoteMutation.isPending} onClick={(e) => { e.stopPropagation(); handleUpvoteClick(issue._id); }}>
+                                                {upvoteMutation.isPending && upvoteMutation.variables === issue._id ? <Loader2 className="w-4 h-4 animate-spin"/> : <ThumbsUp className="w-4 h-4"/>}
+                                                <span className="ml-2">{issue.upvotes.length}</span>
+                                            </Button>
                                         </div>
                                     </div>
-                                )}
-                                <div className="flex-1">
-                                    <h3 className="font-semibold">{issue.category}</h3>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><MapPin className="w-4 h-4"/>{issue.address}</p>
-                                    <p className="text-xs text-muted-foreground mt-1"><Calendar className="w-3 h-3 inline mr-1"/>{new Date(issue.createdAt).toLocaleDateString()}</p>
-                                    <Badge variant={issue.status === 'pending' ? 'warning' : 'default'} className="capitalize mt-2">{issue.status.replace('-', ' ')}</Badge>
-                                </div>
-                                <Button variant={hasUpvoted ? "default" : "outline"} size="sm" disabled={!isAuthenticated || upvoteMutation.isPending} onClick={(e) => { e.stopPropagation(); upvoteMutation.mutate(issue._id); }}>
-                                    {upvoteMutation.isPending && upvoteMutation.variables === issue._id ? <Loader2 className="w-4 h-4 animate-spin"/> : <ThumbsUp className="w-4 h-4"/>}
-                                    <span className="ml-2">{issue.upvotes.length}</span>
-                                </Button>
+                                    )
+                                })}
                             </div>
-                            <div className="text-right mt-2">
-                                <Button variant="link" size="sm" onClick={() => setSelectedIssue(issue)}>View Details</Button>
-                            </div>
-                        </div>
-                        )
-                    })}
+                        )}
                     </div>
                 </CardContent>
             </Card>
