@@ -13,13 +13,15 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const isHomePage = location.pathname === '/';
 
+  // --- CORRECTED NAVIGATION ARRAY ---
+  // Every item now has an 'icon' property
   const navigation = [
-    { name: "Report Issue", href: "/report", show: isAuthenticated && (isLoading || !user ? true : user.role !== "admin") },
-    { name: "View Map", href: "/map", show: isAuthenticated },
-    { name: "My Issues", href: "/my-issues", show: isAuthenticated && (isLoading || !user ? true : user.role !== "admin") },
-    { name: "My Profile", href: "/profile", show: isAuthenticated },
-    { name: "Dashboard", href: "/admin", show: isAuthenticated && user?.role === "admin" },
-    { name: "Analytics", href: "/analytics", show: isAuthenticated && user?.role === "admin" },
+    { name: "Report Issue", href: "/report", icon: FileText, show: isAuthenticated && (isLoading || !user ? true : user.role !== "admin") },
+    { name: "View Map", href: "/map", icon: MapPin, show: isAuthenticated },
+    { name: "My Issues", href: "/my-issues", icon: FileText, show: isAuthenticated && (isLoading || !user ? true : user.role !== "admin") },
+    { name: "My Profile", href: "/profile", icon: User, show: isAuthenticated },
+    { name: "Dashboard", href: "/admin", icon: BarChart3, show: isAuthenticated && user?.role === "admin" },
+    { name: "Analytics", href: "/analytics", icon: BarChart3, show: isAuthenticated && user?.role === "admin" },
   ];
 
   const visibleNavigation = navigation.filter(item => item.show);
@@ -53,13 +55,13 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <nav className="hidden md:flex items-center space-x-2">
               {visibleNavigation.map(item => {
-                const Icon = item.icon;
+                const Icon = item.icon; // This will now always be a valid component
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      "flex items-center gap-1 px-3 py-2 rounded text-sm font-medium transition-all",
+                      "flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-all",
                       isHomePage ? "text-white hover:bg-white/10" : "text-blue-800 hover:bg-blue-50"
                     )}
                   >
@@ -81,14 +83,12 @@ export function Layout({ children }: { children: ReactNode }) {
                   </Button>
                 </>
               ) : (
-                // --- CORRECTED STRUCTURE ---
-                // Each button is now separate, and both are wrapped in a React Fragment <>
                 <>
                   <Button asChild className={cn( isHomePage ? "bg-white text-blue-900 hover:bg-blue-100" : "bg-primary text-primary-foreground")}>
                     <Link to="/report">Report Issue</Link>
                   </Button>
-                  <Button asChild className={cn( isHomePage ? "bg-white text-blue-900 hover:bg-blue-100" : "bg-primary text-primary-foreground")}>
-                    <Link to="/report">Sign in</Link>
+                  <Button asChild variant="outline" className={cn(isHomePage ? "border-white text-white hover:bg-white/10" : "border-primary")}>
+                    <Link to="/login">Sign In</Link>
                   </Button>
                 </>
               )}
