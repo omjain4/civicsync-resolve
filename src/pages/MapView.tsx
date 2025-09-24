@@ -34,6 +34,9 @@ interface Report {
 }
 
 // --- NEW IN-PANEL DETAIL VIEW COMPONENT ---
+// ... (imports and other components remain the same) ...
+
+// --- NEW IN-PANEL DETAIL VIEW COMPONENT ---
 const IssueDetailView = ({
     issue,
     onBack,
@@ -53,7 +56,11 @@ const IssueDetailView = ({
         <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto pr-2 space-y-4">
                 {issue.imageUrl && (
-                    <img src={issue.imageUrl} alt={issue.category} className="w-full h-48 object-cover rounded-lg"/>
+                    <img
+                        src={issue.imageUrl}
+                        alt={issue.category}
+                        className="w-full h-auto max-h-64 object-contain rounded-lg border" // Changed styling here
+                    />
                 )}
                 <div>
                     <h3 className="font-semibold text-lg">{issue.category}</h3>
@@ -66,6 +73,16 @@ const IssueDetailView = ({
                 <div className="text-xs text-muted-foreground">
                     Reported on {new Date(issue.createdAt).toLocaleDateString()}
                 </div>
+                {issue.afterImageUrl && (
+                    <div className="pt-4">
+                        <h4 className="font-semibold text-sm mb-1 text-green-600">Resolution Photo</h4>
+                        <img
+                            src={issue.afterImageUrl}
+                            alt="After resolution"
+                            className="w-full h-auto max-h-64 object-contain rounded-lg border-2 border-green-500" // Changed styling here
+                        />
+                    </div>
+                )}
             </div>
             <div className="border-t pt-4 mt-4 flex justify-between items-center">
                 <Button variant="ghost" onClick={onBack}>
@@ -80,6 +97,8 @@ const IssueDetailView = ({
         </div>
     );
 };
+
+// ... (rest of MapView component remains the same) ...
 
 
 export default function MapView() {
