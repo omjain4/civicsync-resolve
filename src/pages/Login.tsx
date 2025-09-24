@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Mail, Phone, Lock } from "lucide-react";
+import { MapPin, Mail, Phone, Lock, Camera, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../lib/api";
@@ -64,10 +64,15 @@ function LoginPageContent() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // --- NEW STATE FOR SIGN UP ---
+  const [signupUsername, setSignupUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [signupProfilePhoto, setSignupProfilePhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -118,37 +123,47 @@ function LoginPageContent() {
     }
   }, [loginEmail, loginPassword, login, toast, navigate, isLoading]);
 
-  const handleSignup = useCallback(async (e) => {
+  // --- UPDATED SIGN UP HANDLER ---
+  const handleSignup = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (signupPassword !== signupConfirmPassword) {
       return toast({ title: "Password Mismatch", variant: "destructive" });
     }
-    
     if (isLoading) return;
-    
     setIsLoading(true);
     
+    const formData = new FormData();
+    formData.append('username', signupUsername);
+    formData.append('email', signupEmail);
+    formData.append('phone', signupPhone);
+    formData.append('password', signupPassword);
+    if (signupProfilePhoto) {
+        formData.append('profilePhoto', signupProfilePhoto);
+    }
+    
     try {
-      const response = await api.post('/auth/register', { 
-        email: signupEmail, 
-        phone: signupPhone, 
-        password: signupPassword 
+      const response = await api.post('/auth/register', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       const userData = response.data.user;
-      
       login(response.data.token, userData);
       toast({ title: "Account Created!", description: "Welcome to CivicSync." });
       navigate('/profile');
-    } catch (error) {
-      toast({ 
-        title: "Signup Failed", 
-        description: error.response?.data?.message || "Could not create account.", 
-        variant: "destructive" 
-      });
+    } catch (error: any) {
+      toast({ title: "Signup Failed", description: error.response?.data?.message || "Could not create account.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  }, [signupEmail, signupPhone, signupPassword, signupConfirmPassword, login, toast, navigate, isLoading]);
+  }, [signupUsername, signupEmail, signupPhone, signupPassword, signupConfirmPassword, signupProfilePhoto, login, toast, navigate, isLoading]);
+
+  // --- NEW PHOTO HANDLER ---
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSignupProfilePhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
@@ -222,89 +237,61 @@ function LoginPageContent() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="signup" className="space-y-4 pt-4">
+                 <TabsContent value="signup" className="space-y-4 pt-4">
                   <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="flex flex-col items-center space-y-2">
+                        <Label htmlFor="profilePhoto" className="cursor-pointer">
+                            <div className="w-24 h-24 rounded-full bg-slate-100 border flex items-center justify-center overflow-hidden hover:bg-slate-200 transition-colors">
+                                {photoPreview ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover"/> : <Camera className="w-8 h-8 text-slate-400"/>}
+                            </div>
+                        </Label>
+                        <input id="profilePhoto" type="file" ref={photoInputRef} accept="image/*" onChange={handlePhotoChange} className="hidden"/>
+                        <Button type="button" variant="link" size="sm" onClick={() => photoInputRef.current?.click()}>Add Profile Photo</Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-username">Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                        <Input id="signup-username" placeholder="Choose a username" value={signupUsername} onChange={(e) => setSignupUsername(e.target.value)} required className="pl-10" disabled={isLoading}/>
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email Address</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                          id="signup-email" 
-                          type="email" 
-                          placeholder="Enter your email" 
-                          value={signupEmail} 
-                          onChange={(e) => setSignupEmail(e.target.value)} 
-                          required 
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
+                        <Input id="signup-email" type="email" placeholder="Enter your email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required className="pl-10" disabled={isLoading}/>
                       </div>
                     </div>
+                    
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                          id="phone" 
-                          type="tel" 
-                          placeholder="Enter your phone number" 
-                          value={signupPhone} 
-                          onChange={(e) => setSignupPhone(e.target.value)} 
-                          required 
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
+                        <Input id="phone" type="tel" placeholder="Enter your phone number" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} required className="pl-10" disabled={isLoading}/>
                       </div>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                          id="signup-password" 
-                          type="password" 
-                          placeholder="Create a secure password" 
-                          value={signupPassword} 
-                          onChange={(e) => setSignupPassword(e.target.value)} 
-                          required 
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
+                        <Input id="signup-password" type="password" placeholder="Create a secure password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required className="pl-10" disabled={isLoading}/>
                       </div>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="confirm-password">Confirm Password</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                          id="confirm-password" 
-                          type="password" 
-                          placeholder="Confirm your password" 
-                          value={signupConfirmPassword} 
-                          onChange={(e) => setSignupConfirmPassword(e.target.value)} 
-                          required 
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
+                        <Input id="confirm-password" type="password" placeholder="Confirm your password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required className="pl-10" disabled={isLoading}/>
                       </div>
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-civic hover:bg-primary-dark"
-                      disabled={isLoading}
-                    >
+
+                    <Button type="submit" className="w-full bg-gradient-civic hover:bg-primary-dark" disabled={isLoading}>
                       {isLoading ? "Creating Account..." : "Create Account"}
                     </Button>
-                    <div className="text-center text-sm text-muted-foreground">
-                      Already have an account?{' '}
-                      <button 
-                        type="button"
-                        onClick={() => setActiveTab('login')}
-                        className="text-primary hover:underline"
-                      >
-                        Sign in here
-                      </button>
-                    </div>
                   </form>
                 </TabsContent>
               </Tabs>

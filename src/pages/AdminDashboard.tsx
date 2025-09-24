@@ -189,7 +189,7 @@ export default function AdminDashboard() {
       report.description.toLowerCase().includes(searchQuery.toLowerCase()))
   ) || [];
 
-  const categories = [...new Set(reports?.map((report: any) => report.category) || [])];
+  const categories = [...new Set(reports?.map((report: any) => report.category) || [])] as string[];
   
   if (isLoadingStats || isLoadingReports) {
     return (

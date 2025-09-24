@@ -225,7 +225,7 @@ export default function MapView() {
                                             <div className="flex-1">
                                                 <h3 className="font-semibold">{issue.category}</h3>
                                                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1"><MapPin className="w-4 h-4"/>{issue.address}</p>
-                                                <Badge variant={issue.status === 'pending' ? 'warning' : 'default'} className="capitalize mt-2">{issue.status.replace('-', ' ')}</Badge>
+                                                <Badge variant={issue.status === 'pending' ? 'secondary' : 'default'} className="capitalize mt-2">{issue.status.replace('-', ' ')}</Badge>
                                             </div>
                                             <Button variant={hasUpvoted ? "default" : "outline"} size="sm" disabled={!isAuthenticated || upvoteMutation.isPending} onClick={(e) => { e.stopPropagation(); handleUpvoteClick(issue._id); }}>
                                                 {upvoteMutation.isPending && upvoteMutation.variables === issue._id ? <Loader2 className="w-4 h-4 animate-spin"/> : <ThumbsUp className="w-4 h-4"/>}
