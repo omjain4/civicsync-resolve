@@ -37,8 +37,16 @@ export default function Profile() {
         <div className="max-w-2xl mx-auto">
           <Card className="shadow-lg border-t-4 border-primary">
             <CardHeader className="text-center items-center gap-2 pt-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center mb-4">
-                <User className="w-12 h-12 text-white" />
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow">
+                {user.profilePhoto ? (
+                  <img
+                    src={user.profilePhoto}
+                    alt={user.username || 'User'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-12 h-12 text-white" />
+                )}
               </div>
               <CardTitle className="text-3xl">{user.role === 'admin' ? 'Administrator' : 'Citizen Profile'}</CardTitle>
               <p className="text-lg text-muted-foreground">{user.email}</p>
@@ -55,14 +63,14 @@ export default function Profile() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 p-6 bg-slate-50 border-t">
               <div className="flex gap-2">
-                  <Button variant="outline" disabled>
-                      <Edit className="w-4 h-4 mr-2"/>
-                      Edit Profile
-                  </Button>
-                   <Button variant="outline" disabled>
-                      <KeyRound className="w-4 h-4 mr-2"/>
-                      Change Password
-                  </Button>
+                <Button variant="outline" disabled>
+                  <Edit className="w-4 h-4 mr-2"/>
+                  Edit Profile
+                </Button>
+                 <Button variant="outline" disabled>
+                  <KeyRound className="w-4 h-4 mr-2"/>
+                  Change Password
+                </Button>
               </div>
               <Button onClick={handleLogout} variant="destructive">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -74,4 +82,4 @@ export default function Profile() {
       </div>
     </div>
   );
-} 
+}

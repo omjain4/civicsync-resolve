@@ -36,17 +36,17 @@ export function Layout({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <header className={cn(
-          "py-4 w-full z-30 transition-colors sticky top-0",
+          "py-4 w-full z-30 transition-all duration-700 ease-out sticky top-0",
           isHomePage 
-            ? "bg-gradient-to-b from-black/60 to-transparent"
-            : "bg-white/95 border-b shadow-sm"
+            ? "glass-dark border-b border-white/10"
+            : "glass-nav border-b border-white/20"
         )}>
           <div className="container mx-auto px-4 flex justify-between items-center">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="rounded bg-white p-2 shadow-inner">
+            <Link to="/" className="flex items-center space-x-3 group transition-all duration-500 hover:scale-105">
+              <div className="glass rounded-2xl p-3 shadow-xl transition-all duration-500 group-hover:rotate-12 group-hover:scale-110">
                 <MapPin className="w-6 h-6 text-primary" />
               </div>
-              <span className={cn("uppercase font-bold text-xl", isHomePage ? "text-white" : "text-primary")}>Civicsync</span>
+              <span className={cn("uppercase font-bold text-xl tracking-wide transition-all duration-500", isHomePage ? "text-white" : "text-primary")}>CivicSync</span>
             </Link>
             {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-2">
@@ -146,17 +146,17 @@ export function Layout({ children }: { children: ReactNode }) {
   // ADMIN: Center nav, user menu right, mobile hamburger toggles panel
   if (isAuthenticated && user?.role === "admin") {
     return (
-      <div className="min-h-screen bg-[#eaf4fb] flex flex-col">
-        <header className="flex items-center py-4 px-4 md:px-8 shadow bg-[#eaf4fb] border-b">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 flex flex-col">
+        <header className="flex items-center py-6 px-6 md:px-10 glass-nav shadow-xl border-b border-white/20">
           <Button variant="ghost" size="icon" className="md:hidden mr-2"
             onClick={() => setMobileMenuOpen(v => !v)}>
             {mobileMenuOpen ? <X /> : <Menu />}
           </Button>
           <div className="flex-1 flex justify-center">
-            <nav className="flex gap-5 md:gap-10 font-semibold text-lg">
-              <Link to="/admin" className={cn("hover:text-[#0277bd]", location.pathname === "/admin" && "text-[#0277bd] font-bold")}>Dashboard</Link>
-              <Link to="/assignment-board" className={cn("hover:text-[#0277bd]", location.pathname === "/assignment-board" && "text-[#0277bd] font-bold")}>Assignment Board</Link>
-              <Link to="/analytics" className={cn("hover:text-[#0277bd]", location.pathname === "/analytics" && "text-[#0277bd] font-bold")}>Analytics</Link>
+            <nav className="flex gap-6 md:gap-12 font-semibold text-lg">
+              <Link to="/admin" className={cn("glass-button px-6 py-3 rounded-2xl transition-all duration-500 hover:scale-105", location.pathname === "/admin" && "bg-blue-500/20 text-blue-700 font-bold shadow-lg")}>Dashboard</Link>
+              <Link to="/assignment-board" className={cn("glass-button px-6 py-3 rounded-2xl transition-all duration-500 hover:scale-105", location.pathname === "/assignment-board" && "bg-blue-500/20 text-blue-700 font-bold shadow-lg")}>Assignment Board</Link>
+              <Link to="/analytics" className={cn("glass-button px-6 py-3 rounded-2xl transition-all duration-500 hover:scale-105", location.pathname === "/analytics" && "bg-blue-500/20 text-blue-700 font-bold shadow-lg")}>Analytics</Link>
             </nav>
           </div>
           <div className="flex items-center gap-2 md:gap-4 justify-end">
@@ -192,25 +192,27 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#eaf4fb] flex">
       {/* Desktop Sidebar */}
-      <aside className={cn("fixed z-40 top-0 left-0 h-screen w-64 flex-col bg-[#0a2679] text-white shadow-xl hidden lg:flex")}>
-        <Link to="/" className="flex items-center gap-2 px-4 py-5 border-b border-white/10 hover:opacity-80 transition">
-          <MapPin className="w-6 h-6 text-[#5e94fc]" />
-          <span className="font-extrabold text-xl tracking-wide">CivicSync</span>
+      <aside className={cn("fixed z-40 top-0 left-0 h-screen w-64 flex-col glass-sidebar text-white shadow-2xl hidden lg:flex")}>
+        <Link to="/" className="flex items-center gap-3 px-6 py-6 border-b border-white/20 hover:bg-white/10 transition-all duration-500 group">
+          <div className="p-2 glass rounded-xl group-hover:scale-110 transition-all duration-500">
+            <MapPin className="w-6 h-6 text-blue-300" />
+          </div>
+          <span className="font-extrabold text-xl tracking-wide group-hover:text-blue-200 transition-all duration-300">CivicSync</span>
         </Link>
-        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
-          {visibleNavigation.map(item => (
+        <nav className="flex-1 px-4 py-6 space-y-3 overflow-y-auto">
+          {visibleNavigation.map((item) => (
             <Link
               key={item.name}
               to={item.href}
               className={cn(
-                "flex items-center gap-3 p-2 rounded-lg hover:bg-blue-900/60 transition",
+                "flex items-center gap-4 p-3 rounded-2xl hover:bg-white/20 transition-all duration-500 group",
                 location.pathname.startsWith(item.href)
-                  ? "bg-blue-900/80 font-bold"
-                  : "bg-transparent"
+                  ? "bg-white/25 font-bold shadow-lg"
+                  : "bg-transparent hover:scale-105"
               )}
             >
-              <item.icon className="w-5 h-5" />
-              <span>{item.name}</span>
+              <item.icon className="w-5 h-5 group-hover:scale-110 transition-all duration-300" />
+              <span className="group-hover:translate-x-1 transition-all duration-300">{item.name}</span>
             </Link>
           ))}
         </nav>
@@ -269,7 +271,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      "flex items-center gap-3 p-2 rounded-lg hover:bg-blue-900/60 transition",
+                      "flex items-center gap-3 p-2 rounded-lg hover:bg-blue-900/60 transition-colors duration-300",
                       location.pathname.startsWith(item.href)
                         ? "bg-blue-900/80 font-bold"
                         : "bg-transparent"

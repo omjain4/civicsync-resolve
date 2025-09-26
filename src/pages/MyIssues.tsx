@@ -157,14 +157,14 @@ export default function MyIssues() {
       <div className="grid gap-6">
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
         {filteredIssues.map((issue: any) => (
-          <Card key={issue._id} className="shadow-sm">
+          <Card key={issue._id} className="glass-card animate-slide-up hover:scale-[1.02] transition-all duration-500">
             <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                   <div>
                     <CardTitle>{issue.title || issue.category}</CardTitle>
                     <CardDescription className="mt-1 flex items-center gap-2"><MapPin className="w-4 h-4"/>{issue.address}</CardDescription>
                   </div>
-                    <Badge variant={getStatusColor(issue.status) as any} className="capitalize">{issue.status.replace('-', ' ')}</Badge>
+                    <Badge variant={getStatusColor(issue.status) as any} className="capitalize glass px-3 py-1 animate-bounce-gentle">{issue.status.replace('-', ' ')}</Badge>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -202,7 +202,7 @@ export default function MyIssues() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 w-full animate-fade-in">
         <ConfirmationDialog 
             isOpen={!!confirmState}
             onClose={() => setConfirmState(null)}
@@ -218,10 +218,10 @@ export default function MyIssues() {
           </div>
         )}
         <div className="container mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold mb-8">My Reported Issues</h1>
-            <Card>
+            <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent animate-slide-up">My Reported Issues</h1>
+            <Card className="glass-card animate-scale-in">
               <Tabs defaultValue="all" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 border-b rounded-t-lg rounded-b-none p-0 h-auto"><TabsTrigger value="all" className="py-3">All</TabsTrigger><TabsTrigger value="pending" className="py-3">Pending</TabsTrigger><TabsTrigger value="in-progress" className="py-3">In Progress</TabsTrigger><TabsTrigger value="resolved" className="py-3">Resolved</TabsTrigger></TabsList>
+                  <TabsList className="grid w-full grid-cols-4 glass border-b rounded-t-2xl rounded-b-none p-1 h-auto"><TabsTrigger value="all" className="py-4 glass-button transition-all duration-500">All</TabsTrigger><TabsTrigger value="pending" className="py-4 glass-button transition-all duration-500">Pending</TabsTrigger><TabsTrigger value="in-progress" className="py-4 glass-button transition-all duration-500">In Progress</TabsTrigger><TabsTrigger value="resolved" className="py-4 glass-button transition-all duration-500">Resolved</TabsTrigger></TabsList>
                   <CardContent className="p-6">
                       <TabsContent value="all">{renderIssues()}</TabsContent>
                       <TabsContent value="pending">{renderIssues('pending')}</TabsContent>

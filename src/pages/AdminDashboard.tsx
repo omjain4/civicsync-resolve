@@ -121,7 +121,8 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-6">
+      <div className="space-y-8 animate-fade-in">
       <ConfirmationDialog 
         isOpen={!!confirmState}
         onClose={() => setConfirmState(null)}
@@ -150,20 +151,20 @@ export default function AdminDashboard() {
         <DialogContent><DialogHeader><DialogTitle>Upload 'After' Image</DialogTitle><DialogDescription>To mark this issue as 'Resolved', you must upload a photo of the completed work.</DialogDescription></DialogHeader><div className="py-4 space-y-4"><Input type="file" accept="image/*" onChange={e => setAfterImageFile(e.target.files?.[0] || null)} />{afterImageFile && <img src={URL.createObjectURL(afterImageFile)} className="max-h-60 w-full object-contain rounded-md border"/>}<div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowAfterImageModal(false)}>Cancel</Button><Button onClick={onAfterImageSubmit} disabled={!afterImageFile || isAfterImageUploading}>{isAfterImageUploading ? <Loader2 className="w-4 h-4 animate-spin"/> : "Upload & Resolve"}</Button></div></div></DialogContent>
       </Dialog>
 
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Oversee and manage all reported civic issues.</p>
-      </div>
+        <div className="animate-slide-up">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent mb-3">Admin Dashboard</h1>
+          <p className="text-blue-700 text-xl font-semibold">Oversee and manage all reported civic issues.</p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Issues</CardTitle><FileText className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.total ?? 0}</div></CardContent></Card>
-        <Card><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Pending</CardTitle><Clock className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.pending ?? 0}</div></CardContent></Card>
-        <Card><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">In Progress</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.inProgress ?? 0}</div></CardContent></Card>
-        <Card><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Resolved</CardTitle><CheckCircle className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.resolved ?? 0}</div></CardContent></Card>
-      </div>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          <Card className="glass-card hover:scale-110 transition-all duration-500 animate-scale-in shadow-2xl" style={{animationDelay: '100ms'}}><CardHeader className="flex-row items-center justify-between pb-3"><CardTitle className="text-base font-semibold text-blue-900">Total Issues</CardTitle><FileText className="h-6 w-6 text-blue-600 animate-float"/></CardHeader><CardContent><div className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent">{stats?.total ?? 0}</div></CardContent></Card>
+          <Card className="glass-card hover:scale-105 transition-all duration-300 animate-scale-in" style={{animationDelay: '200ms'}}><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-blue-900">Pending</CardTitle><Clock className="h-4 w-4 text-yellow-600 animate-float"/></CardHeader><CardContent><div className="text-2xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">{stats?.pending ?? 0}</div></CardContent></Card>
+          <Card className="glass-card hover:scale-105 transition-all duration-300 animate-scale-in" style={{animationDelay: '300ms'}}><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-blue-900">In Progress</CardTitle><AlertTriangle className="h-4 w-4 text-blue-600 animate-float"/></CardHeader><CardContent><div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{stats?.inProgress ?? 0}</div></CardContent></Card>
+          <Card className="glass-card hover:scale-105 transition-all duration-300 animate-scale-in" style={{animationDelay: '400ms'}}><CardHeader className="flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium text-blue-900">Resolved</CardTitle><CheckCircle className="h-4 w-4 text-green-600 animate-float"/></CardHeader><CardContent><div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{stats?.resolved ?? 0}</div></CardContent></Card>
+        </div>
 
-      <Card>
-        <CardHeader><CardTitle>All Reported Issues</CardTitle></CardHeader>
+      <Card className="glass-card shadow-2xl animate-scale-in">
+        <CardHeader><CardTitle className="text-2xl font-bold text-blue-900">All Reported Issues</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -209,6 +210,7 @@ export default function AdminDashboard() {
           </Table>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

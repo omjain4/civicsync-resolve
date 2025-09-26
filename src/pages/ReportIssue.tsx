@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,12 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic } from "lucide-react";
+import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
+import { suggestIssueDescription } from "@/ai/suggest-issue-description";
+import { cn } from "@/lib/utils";
 
 const issueCategories = [
   "Roads & Potholes",
@@ -39,6 +41,11 @@ const geocodeAddress = async (address: string): Promise<{lat: number, lng: numbe
     return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
   }
   return null;
+};
+
+// Validate data URL to prevent XSS
+const isValidDataURL = (dataURL: string): boolean => {
+  return /^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(dataURL);
 };
 
 // Image compression function
@@ -91,10 +98,78 @@ export default function ReportIssue() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [agreed, setAgreed] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+      recognitionInstance.lang = 'en-US';
+      
+      recognitionInstance.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setDescription(prev => prev + (prev ? ' ' : '') + transcript);
+        setIsListening(false);
+        toast({ title: "Voice captured!", description: "Your speech has been converted to text." });
+      };
+      
+      recognitionInstance.onerror = () => {
+        setIsListening(false);
+        toast({ title: "Voice recognition failed", description: "Please try again or type manually.", variant: "destructive" });
+      };
+      
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+      
+      setRecognition(recognitionInstance);
+    }
+  }, [toast]);
+
+  const startVoiceRecognition = () => {
+    if (recognition) {
+      setIsListening(true);
+      recognition.start();
+    } else {
+      toast({ title: "Voice recognition not supported", description: "Please use a modern browser.", variant: "destructive" });
+    }
+  };
+
+  const stopVoiceRecognition = () => {
+    if (recognition && isListening) {
+      recognition.stop();
+      setIsListening(false);
+    }
+  };
+
+  // Cleanup camera and speech recognition on component unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (recognition && isListening) {
+        recognition.stop();
+      }
+    };
+  }, [stream, recognition, isListening]);
 
   const mutation = useMutation({
     mutationFn: createIssue,
@@ -139,6 +214,119 @@ export default function ReportIssue() {
       } finally { setIsCompressing(false); }
     }
   };
+
+  const clearPhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+  };
+
+  const openCamera = useCallback(async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' } // Use back camera
+      });
+      setStream(mediaStream);
+      setShowCamera(true);
+      
+      // Wait for video element to be available
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (error) {
+      toast({
+        title: "Camera Access Denied",
+        description: "Please allow camera access to take photos.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
+  const takePhoto = useCallback(() => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+          setPhoto(file);
+          setPhotoPreview(canvas.toDataURL('image/jpeg'));
+          closeCamera();
+          toast({
+            title: "Photo Captured! 📸",
+            description: "Your photo has been added to the report."
+          });
+        }
+      }, 'image/jpeg', 0.8);
+    }
+  }, [toast]);
+
+  const closeCamera = useCallback(() => {
+    // Stop all tracks immediately
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
+    }
+    
+    // Clear video element
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.load(); // Force reload to clear any cached stream
+    }
+    
+    // Clear state
+    setStream(null);
+    setShowCamera(false);
+    
+    // Force garbage collection of media stream
+    setTimeout(() => {
+      if (window.gc) {
+        window.gc();
+      }
+    }, 100);
+  }, [stream]);
+
+  const generateAIDescription = useCallback(async () => {
+    if (!photoPreview || !address) {
+      toast({
+        title: "Missing Information",
+        description: "Please add a photo and location first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const result = await suggestIssueDescription({
+        photoDataUri: photoPreview,
+        locationData: address
+      });
+      setAiDescription(result.suggestedDescription);
+      toast({
+        title: "AI Description Generated! ✨",
+        description: "You can edit or use this description."
+      });
+    } catch (error) {
+      toast({
+        title: "AI Generation Failed",
+        description: "Could not generate description. Please write manually.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [photoPreview, address, toast]);
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
@@ -235,15 +423,15 @@ export default function ReportIssue() {
     switch (currentStep) {
       case 1: return (
         <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2 text-blue-900">Issue Details</h2>
-            <p className="text-blue-700">Select category, upload photo, and set location</p>
+          <div className="text-center animate-fade-in">
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Issue Details</h2>
+            <p className="text-slate-600">Select category, upload photo, and set location</p>
           </div>
           <div className="space-y-5">
-            <div>
-              <Label>Category</Label>
+            <div className="animate-slide-up">
+              <Label className="text-slate-700 font-medium mb-2 block">Category</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="border-blue-200 bg-white focus:border-blue-700">
+                <SelectTrigger className="glass-input border-0 focus:ring-0">
                   <SelectValue placeholder="Select issue category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,140 +441,214 @@ export default function ReportIssue() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Photo</Label>
-              <div className="border-2 border-dashed border-blue-200 rounded-lg p-7 text-center relative bg-blue-50">
-                {photoPreview ? (
-                  <div className="space-y-3">
-                    <img src={photoPreview} alt="Preview" className="max-w-full h-48 object-cover rounded mx-auto" />
-                    <p className="text-sm">{photo && `${(photo.size / 1024 / 1024).toFixed(2)}MB`}</p>
-                  </div>
-                ) : (
-                  <>
-                    <Camera className="w-9 h-9 text-blue-300 mx-auto mb-3" />
-                    <p className="text-base font-medium text-blue-900">Click to upload or drag and drop</p>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={isCompressing}
-                />
-                {isCompressing && (
-                  <div className="flex justify-center mt-2">
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    <span>Compressing...</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div>
-  <Label htmlFor="location">Location</Label>
-  <div className="flex gap-2">
-    <Input
-      id="location"
-      placeholder="Enter address or use GPS"
-      value={address}
-      onChange={e => setAddress(e.target.value)}
-      className="border-blue-200"
-    />
-    <Button
-      type="button"
-      onClick={handleGetLocation}
-      disabled={isGettingLocation}
-      className="bg-blue-700 text-white"
-    >
-      {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-    </Button>
-    <Button
-      type="button"
-      onClick={async () => {
-        const coords = await geocodeAddress(address);
-        if (coords) {
-          setLocation(coords);
-          toast({
-            title: "Address Located! 📍",
-            description: `Latitude: ${coords.lat}, Longitude: ${coords.lng}`,
-          });
-        } else {
-          toast({
-            title: "Address Not Found",
-            description: "No coordinates found for this address.",
-            variant: "destructive"
-          });
-        }
-      }}
-      disabled={!address}
-      className="bg-blue-500 text-white"
-    >
-      Lookup Address
-    </Button>
-  </div>
-</div>
-
+            <div className="animate-slide-up">
+              <Label className="text-slate-700 font-medium mb-2 block">Photo/Video</Label>
+              <div className="glass rounded-2xl p-8 text-center relative transition-all duration-300 hover:bg-white/80">
+      {photoPreview ? (
+        <div className="space-y-3 relative">
+          {photo?.type.startsWith("video") ? (
+            <video
+              src={photoPreview}
+              controls
+              className="max-w-full h-48 object-cover rounded mx-auto"
+            />
+          ) : (
+            <img
+              src={photoPreview && isValidDataURL(photoPreview) ? photoPreview : ''}
+              alt="Preview"
+              className="max-w-full h-48 object-cover rounded mx-auto"
+            />
+          )}
+          <button
+            type="button"
+            className="absolute top-2 right-2 text-blue-600 bg-white rounded px-1 shadow"
+            onClick={clearPhoto}
+          >
+            Remove
+          </button>
+          <p className="text-sm">
+            {photo && `${(photo.size / 1024 / 1024).toFixed(2)}MB`}
+          </p>
+        </div>
+      ) : (
+        // 👇 UPDATED SECTION for upload options
+        <div className="space-y-4 flex flex-col items-center animate-float">
+          <Camera className="w-12 h-12 text-blue-400" />
+          <p className="text-base font-medium text-slate-700">
+            Drag & drop a file or
+          </p>
+          <div className="flex items-center justify-center space-x-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isCompressing}
+              className="glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white disabled:opacity-50"
+            >
+              Upload File
+            </button>
+            <span className="text-slate-400">or</span>
+            <button
+              type="button"
+              onClick={openCamera}
+              disabled={isCompressing}
+              className="glass-button text-slate-700 disabled:opacity-50"
+            >
+              Use Camera
+            </button>
           </div>
         </div>
+      )}
+
+      {/* Hidden input for file selection */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*,video/*"
+        onChange={handlePhotoChange}
+        className="hidden"
+        disabled={isCompressing}
+      />
+
+      {/* Hidden input for camera capture */}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        accept="image/*"
+        capture="environment" // "user" for front camera
+        onChange={handlePhotoChange}
+        className="hidden"
+        disabled={isCompressing}
+      />
+
+      {isCompressing && (
+        <div className="flex justify-center mt-2">
+          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          <span>Compressing...</span>
+        </div>
+      )}
+    </div>
+  </div>
+
+            </div>
+            <div className="animate-slide-up">
+              <Label htmlFor="location" className="text-slate-700 font-medium mb-2 block">Location</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="location"
+                  placeholder="Enter address or use GPS"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="glass-input border-0 flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={isGettingLocation}
+                  className="glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white disabled:opacity-50 px-3"
+                >
+                  {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const coords = await geocodeAddress(address);
+                    if (coords) {
+                      setLocation(coords);
+                      toast({
+                        title: "Address Located! 📍",
+                        description: `Latitude: ${coords.lat}, Longitude: ${coords.lng}`,
+                      });
+                    } else {
+                      toast({
+                        title: "Address Not Found",
+                        description: "No coordinates found for this address.",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                  disabled={!address}
+                  className="glass-button text-slate-700 disabled:opacity-50 px-3 text-sm"
+                >
+                  Lookup
+                </button>
+              </div>
+            </div>
+
+          </div>
       );
       case 2: return (
         <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2 text-blue-900">Categorization</h2>
-            <p className="text-blue-700">AI will suggest the best category</p>
+          <div className="text-center animate-fade-in">
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Categorization</h2>
+            <p className="text-slate-600">AI will suggest the best category</p>
           </div>
           <div className="space-y-5">
-            <div>
-              <Label>Selected Category</Label>
-              <div className="p-3 bg-blue-50 border border-blue-100 rounded-md font-semibold text-blue-900">
+            <div className="animate-slide-up">
+              <Label className="text-slate-700 font-medium mb-2 block">Selected Category</Label>
+              <div className="glass rounded-xl p-4 font-semibold text-slate-800">
                 {category || "No category selected"}
               </div>
             </div>
-            <div>
-              <Label>Issue Severity (1-5)</Label>
-              <div>
+            <div className="animate-slide-up">
+              <Label className="text-slate-700 font-medium mb-3 block">Issue Severity (1-5)</Label>
+              <div className="glass rounded-xl p-4">
                 <Slider
                   value={[severity]}
                   onValueChange={value => setSeverity(value[0])}
                   max={5}
                   min={1}
                   step={1}
-                  className="w-full"
+                  className="w-full mb-3"
                 />
-                <div className="flex justify-between text-xs text-blue-700 mt-1 mb-1">
+                <div className="flex justify-between text-xs text-slate-500 mb-2">
                   <span>Low</span>
                   <span>Medium</span>
                   <span>High</span>
                   <span>Urgent</span>
                   <span>Critical</span>
                 </div>
-                <p className="text-sm text-blue-900 font-medium">Level {severity} - {getSeverityLabel(severity)}</p>
+                <p className="text-sm text-slate-700 font-medium">Level {severity} - {getSeverityLabel(severity)}</p>
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-              <h3 className="font-semibold mb-1 text-blue-800">Expected Resolution Time</h3>
-              <p className="text-xs text-blue-700">Based on category and severity: <b>{getExpectedTime()}</b></p>
+            <div className="glass rounded-xl p-4 animate-scale-in">
+              <h3 className="font-semibold mb-1 text-slate-700">Expected Resolution Time</h3>
+              <p className="text-sm text-slate-600">Based on category and severity: <span className="font-semibold text-blue-600">{getExpectedTime()}</span></p>
             </div>
           </div>
         </div>
       );
       case 3: return (
         <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2 text-blue-900">Description</h2>
-            <p className="text-blue-700">Describe the issue in detail</p>
+          <div className="text-center animate-fade-in">
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Description</h2>
+            <p className="text-slate-600">Describe the issue in detail</p>
           </div>
           <div className="space-y-5">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <Label>Detailed Description</Label>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    <Mic className="w-4 h-4 mr-1" />
-                    Voice
-                  </Button>
+            <div className="animate-slide-up">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 gap-3">
+                <Label className="text-slate-700 font-medium">Detailed Description</Label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button 
+                    onClick={generateAIDescription}
+                    disabled={isGeneratingAI || !photoPreview || !address}
+                    className="glass-button bg-gradient-to-r from-purple-500 to-pink-500 text-white disabled:opacity-50 text-sm"
+                  >
+                    {isGeneratingAI ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Sparkles className="w-4 h-4 mr-1" />}
+                    AI Generate
+                  </button>
+                  <button 
+                    onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+                    disabled={!recognition}
+                    className={cn(
+                      "glass-button text-sm transition-all duration-500",
+                      isListening ? "bg-red-500 text-white animate-pulse" : "text-slate-700 hover:bg-white/80"
+                    )}
+                  >
+                    <Mic className={cn("w-4 h-4 mr-1 transition-all duration-300", isListening && "animate-bounce")} />
+                    {isListening ? "Stop" : "Voice"}
+                  </button>
                   <Select defaultValue="English">
-                    <SelectTrigger className="w-24 bg-white border-blue-200">
+                    <SelectTrigger className="glass-input w-24 text-sm border-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -396,19 +658,35 @@ export default function ReportIssue() {
                   </Select>
                 </div>
               </div>
+              
+              {aiDescription && (
+                <div className="mb-4 glass rounded-xl p-4 bg-gradient-to-r from-purple-50/50 to-pink-50/50 animate-scale-in">
+                  <div className="flex justify-between items-start mb-2">
+                    <Label className="text-purple-700 font-medium">AI Generated Description</Label>
+                    <button 
+                      onClick={() => setDescription(aiDescription)}
+                      className="glass-button bg-purple-500 text-white text-sm"
+                    >
+                      Use This
+                    </button>
+                  </div>
+                  <p className="text-sm text-purple-800 glass rounded-lg p-3">{aiDescription}</p>
+                </div>
+              )}
+              
               <Textarea
                 placeholder="Describe the issue in detail... What happened? When did you notice it? How is it affecting you?"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 rows={6}
-                className="resize-none border-blue-200"
+                className="glass-input resize-none border-0"
                 maxLength={1000}
               />
-              <p className="text-xs text-blue-700">{description.length}/1000 characters</p>
+              <p className="text-xs text-slate-500">{description.length}/1000 characters</p>
             </div>
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-800 mb-1">Tips for better reports:</h3>
-              <ul className="text-xs text-blue-700 space-y-1">
+            <div className="glass rounded-xl p-4 animate-scale-in">
+              <h3 className="font-semibold text-slate-700 mb-2">Tips for better reports:</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
                 <li>• Include specific location details</li>
                 <li>• Mention when the issue started</li>
                 <li>• Describe how it affects daily life</li>
@@ -420,41 +698,42 @@ export default function ReportIssue() {
       );
       case 4: return (
         <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2 text-blue-900">Review & Submit</h2>
-            <p className="text-blue-700">Please review your report before submitting</p>
+          <div className="text-center animate-fade-in">
+            <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Review & Submit</h2>
+            <p className="text-slate-600">Please review your report before submitting</p>
           </div>
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg space-y-2 text-blue-900">
-            <div><strong>Category:</strong> {category}</div>
-            <div><strong>Severity:</strong> Level {severity} - {getSeverityLabel(severity)}</div>
-            <div><strong>Location:</strong> {address}</div>
-            <div><strong>Description:</strong> {description.substring(0, 100) + (description.length > 100 ? "..." : "")}</div>
+          <div className="glass rounded-xl p-5 space-y-3 text-slate-700 animate-scale-in">
+            <div><span className="font-medium">Category:</span> {category}</div>
+            <div><span className="font-medium">Severity:</span> Level {severity} - {getSeverityLabel(severity)}</div>
+            <div><span className="font-medium">Location:</span> {address}</div>
+            <div><span className="font-medium">Description:</span> {description.substring(0, 100) + (description.length > 100 ? "..." : "")}</div>
             {photoPreview && (
-              <div>
-                <strong>Photo:</strong>
-                <img src={photoPreview} alt="Preview" className="w-20 h-20 object-cover rounded mt-1 border border-blue-100" />
+              <div className="flex items-center gap-3">
+                <span className="font-medium">Photo:</span>
+                <img src={photoPreview && isValidDataURL(photoPreview) ? photoPreview : ''} alt="Preview" className="w-16 h-16 object-cover rounded-lg shadow-md" />
               </div>
             )}
           </div>
-          <div className="flex items-center mt-2 gap-2">
+          <div className="flex items-start gap-3 glass rounded-xl p-4 animate-slide-up">
             <Checkbox
               id="agree"
               checked={agreed}
               onCheckedChange={checked => setAgreed(Boolean(checked))}
+              className="mt-1"
             />
-            <Label htmlFor="agree" className="text-blue-800">
-              I agree to the <a className="underline" href="/terms" target="_blank" rel="noopener noreferrer">terms and conditions</a> and confirm that all information is true to the best of my knowledge.
+            <Label htmlFor="agree" className="text-slate-700 text-sm leading-relaxed">
+              I agree to the <a className="text-blue-600 hover:text-blue-800 underline" href="/terms" target="_blank" rel="noopener noreferrer">terms and conditions</a> and confirm that all information is true to the best of my knowledge.
             </Label>
           </div>
           {mutation.isPending && (
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Uploading report...</span>
+            <div className="glass rounded-xl p-4 animate-scale-in">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <span className="text-slate-700 font-medium">Uploading report...</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-white/30 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500" 
                   style={{width: `${uploadProgress}%`}}
                 ></div>
               </div>
@@ -467,80 +746,110 @@ export default function ReportIssue() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#eaf4fb] via-[#f8fafc] to-[#eaf4fb]">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 relative overflow-hidden animate-fade-in">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/30"></div>
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        <div className="max-w-2xl mx-auto animate-fade-in">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4 text-blue-900">Report an Issue</h1>
-            <p className="text-lg text-blue-700">
+          <div className="text-center mb-10 animate-slide-up">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Report an Issue
+            </h1>
+            <p className="text-xl text-blue-700 font-semibold">
               Help us improve your city – report civic problems in just 60 seconds
             </p>
           </div>
           {/* Progress Bar */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-2 text-blue-700">
-              <span className="text-sm">Step {currentStep} of 4</span>
-              <span className="text-sm">{Math.round((currentStep / 4) * 100)}% Complete</span>
+          <div className="mb-10 animate-scale-in">
+            <div className="flex justify-between items-center mb-4 text-blue-700">
+              <span className="text-base font-semibold">Step {currentStep} of 4</span>
+              <span className="text-base font-semibold">{Math.round((currentStep / 4) * 100)}% Complete</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full glass rounded-full h-4 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-blue-600 to-blue-900 h-2 rounded-full transition-all duration-300" 
+                className="bg-gradient-to-r from-blue-500 to-purple-500 h-4 rounded-full transition-all duration-700 ease-out shadow-xl" 
                 style={{width: `${(currentStep / 4) * 100}%`}}
               ></div>
             </div>
           </div>
           {/* Step Content */}
-          <Card className="shadow-civic-strong border border-blue-100">
-            <CardContent className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div className="text-lg font-semibold text-blue-900">{currentStep}/4</div>
-              </div>
+          <div className="glass-card p-10 animate-scale-in shadow-2xl">
+            <div className="">
+
               {renderStepContent()}
               {/* Navigation */}
-              <div className="flex justify-between pt-8">
-                <Button 
-                  variant="outline" 
+              <div className="flex justify-between pt-10">
+                <button 
                   onClick={prevStep} 
                   disabled={currentStep === 1 || mutation.isPending}
-                  className="flex items-center gap-2 border-blue-200"
+                  className="glass-button disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 text-slate-700 px-8 py-4 hover:scale-105 transition-all duration-500"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-5 h-5" />
                   Previous
-                </Button>
+                </button>
                 {currentStep === 4 ? (
-                  <Button 
+                  <button 
                     onClick={handleSubmit}
                     disabled={mutation.isPending || !agreed}
-                    className="bg-gradient-to-r from-blue-700 to-blue-900 text-white flex items-center gap-2"
+                    className="glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white disabled:opacity-50 flex items-center gap-3 shadow-2xl px-8 py-4 hover:scale-105 transition-all duration-500"
                   >
                     {mutation.isPending ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-5 h-5 animate-spin" />
                         Submitting...
                       </>
                     ) : (
                       <>
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-5 h-5" />
                         Submit Report
                       </>
                     )}
-                  </Button>
+                  </button>
                 ) : (
-                  <Button 
+                  <button 
                     onClick={nextStep}
                     disabled={currentStep === 1 && !category}
-                    className="bg-gradient-to-r from-blue-700 to-blue-900 text-white flex items-center gap-2"
+                    className="glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white disabled:opacity-50 flex items-center gap-3 shadow-2xl px-8 py-4 hover:scale-105 transition-all duration-500"
                   >
                     Next
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
+      
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="relative w-full h-full max-w-md max-h-96 rounded-2xl overflow-hidden">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-4">
+              <button
+                onClick={takePhoto}
+                className="glass-button bg-white text-black hover:bg-gray-100 rounded-full w-16 h-16 text-2xl shadow-2xl"
+              >
+                📷
+              </button>
+              <button
+                onClick={closeCamera}
+                className="glass-button bg-red-500/90 text-white hover:bg-red-600/90 px-4 py-2 shadow-2xl"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

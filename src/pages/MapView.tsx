@@ -153,24 +153,24 @@ export default function MapView() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold">City Issues Map</h1>
-          <p className="text-lg text-muted-foreground">Click on an issue or a map marker to see details.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
+      <div className="container mx-auto px-4 py-8 animate-fade-in">
+        <div className="mb-8 animate-slide-up">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent">City Issues Map</h1>
+          <p className="text-lg text-blue-700 font-medium">Click on an issue or a map marker to see details.</p>
         </div>
 
-        <Card className="mb-8">
-            <CardHeader><CardTitle><Filter className="w-5 h-5 inline-block mr-2"/>Filters</CardTitle></CardHeader>
+        <Card className="mb-8 glass-card animate-scale-in">
+            <CardHeader><CardTitle className="text-blue-900"><Filter className="w-5 h-5 inline-block mr-2 animate-float"/>Filters</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-4">
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}><SelectTrigger className="w-52"><SelectValue placeholder="All Categories"/></SelectTrigger><SelectContent><SelectItem value="all">All Categories</SelectItem><SelectItem value="Roads & Potholes">Roads & Potholes</SelectItem><SelectItem value="Streetlights & Power">Streetlights & Power</SelectItem><SelectItem value="Sanitation & Waste">Sanitation & Waste</SelectItem><SelectItem value="Water & Utilities">Water & Utilities</SelectItem></SelectContent></Select>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}><SelectTrigger className="w-52"><SelectValue placeholder="All Statuses"/></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="in-progress">In Progress</SelectItem><SelectItem value="resolved">Resolved</SelectItem></SelectContent></Select>
             </CardContent>
         </Card>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-            <Card>
-                <CardHeader><CardTitle>Live Map of Issues</CardTitle></CardHeader>
+        <div className="grid lg:grid-cols-2 gap-8">
+            <Card className="glass-card animate-slide-in-left">
+                <CardHeader><CardTitle className="text-blue-900 flex items-center gap-2"><MapPin className="w-5 h-5 animate-float"/>Live Map of Issues</CardTitle></CardHeader>
                 <CardContent>
                     <div className="h-[500px] rounded-lg overflow-hidden">
                         <MapContainer center={PUNE_CENTER} zoom={12} className="h-full w-full">
@@ -191,10 +191,10 @@ export default function MapView() {
                 </CardContent>
             </Card>
 
-            <Card className="flex flex-col">
+            <Card className="flex flex-col glass-card animate-slide-in-right">
                 <CardHeader>
-                    <CardTitle>{selectedIssue ? "Issue Details" : "Recent Issues"}</CardTitle>
-                    <CardDescription>{selectedIssue ? selectedIssue.category : `${filteredIssues.length} active issues found`}</CardDescription>
+                    <CardTitle className="text-blue-900">{selectedIssue ? "Issue Details" : "Recent Issues"}</CardTitle>
+                    <CardDescription className="text-blue-600">{selectedIssue ? selectedIssue.category : `${filteredIssues.length} active issues found`}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
                     <div className="h-[440px]">

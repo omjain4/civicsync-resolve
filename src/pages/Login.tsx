@@ -48,7 +48,7 @@ const LoginForm = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword,
     </div>
     <Button 
       type="submit" 
-      className="w-full bg-gradient-civic hover:bg-primary-dark"
+      className="w-full glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:scale-105 transition-all duration-500"
       disabled={isLoading}
     >
       {isLoading ? "Signing In..." : "Sign In"}
@@ -166,34 +166,34 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 animate-fade-in">
       <div className="container mx-auto px-4 py-16">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+        <div className="text-center mb-12 animate-slide-up">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent mb-6">
             Welcome to CivicSync
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-blue-700 font-medium max-w-2xl mx-auto leading-relaxed">
             Join thousands of citizens working together to improve their communities. 
             Sign in to report issues or create your account to get started.
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="max-w-md mx-auto">
-          <Card className="shadow-civic-strong backdrop-blur-sm bg-white/95">
-            <CardHeader>
-              <CardTitle className="text-center">Sign In to Your Account</CardTitle>
-              <CardDescription className="text-center">
+        <div className="max-w-md mx-auto animate-scale-in">
+          <Card className="glass-card shadow-2xl">
+            <CardHeader className="text-center pb-8">
+              <CardTitle className="text-2xl font-bold text-blue-900 mb-2">Sign In to Your Account</CardTitle>
+              <CardDescription className="text-blue-600 font-medium">
                 Choose your account type below
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="login">Citizen</TabsTrigger>
-                  <TabsTrigger value="admin-login">Admin</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 glass p-1 rounded-2xl">
+                  <TabsTrigger value="login" className="glass-button transition-all duration-500">Citizen</TabsTrigger>
+                  <TabsTrigger value="admin-login" className="glass-button transition-all duration-500">Admin</TabsTrigger>
+                  <TabsTrigger value="signup" className="glass-button transition-all duration-500">Sign Up</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="login">
@@ -289,7 +289,7 @@ function LoginPageContent() {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full bg-gradient-civic hover:bg-primary-dark" disabled={isLoading}>
+                    <Button type="submit" className="w-full glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:scale-105 transition-all duration-500" disabled={isLoading}>
                       {isLoading ? "Creating Account..." : "Create Account"}
                     </Button>
                   </form>
@@ -303,12 +303,12 @@ function LoginPageContent() {
         <div className="mt-16 max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold text-center mb-8">Why Choose CivicSync?</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <Card className="text-center p-6">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-6 h-6 text-primary" />
+            <Card className="text-center p-8 glass-card animate-scale-in hover:scale-105 transition-all duration-500">
+              <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
+                <MapPin className="w-8 h-8 text-blue-600" />
               </div>
-              <h3 className="font-semibold mb-2">Easy Reporting</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-bold mb-3 text-blue-900">Easy Reporting</h3>
+              <p className="text-blue-700 font-medium">
                 Report civic issues with just a few clicks and automatic location detection
               </p>
             </Card>
