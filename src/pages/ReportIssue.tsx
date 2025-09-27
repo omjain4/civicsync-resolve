@@ -756,7 +756,7 @@ export default function ReportIssue() {
               Report an Issue
             </h1>
             <p className="text-xl text-blue-700 font-semibold">
-              Help us improve your city – report civic problems in just 60 seconds
+              Help us improve your city – report civic problems in just 30 seconds
             </p>
           </div>
           {/* Progress Bar */}
