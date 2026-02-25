@@ -1,9 +1,47 @@
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, FileText, Users, BarChart3, CheckCircle, Clock, ArrowRight, Search } from "lucide-react";
+import { MapPin, FileText, Users, BarChart3, CheckCircle, Clock, ArrowRight, Search, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+
+const formatTimeAgo = (dateString: string) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
+};
 
 const Index = () => {
   const navigate = useNavigate();
+
+  // Fetch real reports from backend (public endpoint)
+  const { data: reports = [], isLoading: isLoadingReports } = useQuery({
+    queryKey: ["publicReports"],
+    queryFn: async () => {
+      const { data } = await api.get("/reports");
+      return data.data;
+    },
+  });
+
+  // Derive stats from real data
+  const stats = {
+    resolved: reports.filter((r: any) => r.status === "resolved").length,
+    total: reports.length,
+    pending: reports.filter((r: any) => r.status === "pending").length,
+    inProgress: reports.filter((r: any) => r.status === "in-progress").length,
+  };
+
+  // Latest 4 reports for the "Recent Reports" section
+  const recentReports = reports.slice(0, 4);
 
   return (
     <div className="w-full">
@@ -100,19 +138,19 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ═══════ STATS — large red numbers ═══════ */}
+      {/* ═══════ STATS — dynamic real numbers ═══════ */}
       <section className="bg-white border-t border-b border-gray-200">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4">
             {[
-              { num: "980", label: "Issues Resolved" },
-              { num: "1,300", label: "Citizens Active" },
-              { num: "24", label: "Departments" },
-              { num: "85", label: "Wards Covered" },
+              { num: stats.resolved.toString(), label: "Issues Resolved" },
+              { num: stats.total.toString(), label: "Total Reports" },
+              { num: stats.pending.toString(), label: "Pending" },
+              { num: stats.inProgress.toString(), label: "In Progress" },
             ].map((stat, i) => (
               <div key={stat.label} className={`py-10 md:py-16 ${i < 3 ? 'md:border-r border-gray-200' : ''} ${i < 2 ? 'border-r border-gray-200 md:border-r' : ''}`}>
                 <div className="text-center">
-                  <div className="stat-number">{stat.num}</div>
+                  <div className="stat-number">{isLoadingReports ? "—" : stat.num}</div>
                   <div className="text-xs uppercase tracking-widest text-gray-400 mt-3 font-semibold">{stat.label}</div>
                 </div>
               </div>
@@ -153,7 +191,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ═══════ HOW IT WORKS + RECENT — split layout ═══════ */}
+      {/* ═══════ HOW IT WORKS + RECENT REPORTS (DYNAMIC) ═══════ */}
       <section className="bg-white">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 border-l border-r border-gray-200">
@@ -179,26 +217,39 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Recent Issues */}
+            {/* Recent Issues — DYNAMIC from backend */}
             <div className="p-8 md:p-12">
               <p className="section-label mb-3">Latest</p>
               <h2 className="display-md mb-8">Recent Reports</h2>
               <div className="space-y-0 border-t border-gray-200">
-                {[
-                  { title: "Broken Streetlight, Nehru Road", status: "Pending", time: "Today" },
-                  { title: "Overflowing Dustbin, Railway Colony", status: "Pending", time: "Yesterday" },
-                  { title: "Water Leakage, Sector 21", status: "In Progress", time: "Yesterday" },
-                  { title: "Pothole, MG Road Junction", status: "Resolved", time: "2 days ago" },
-                ].map(issue => (
-                  <div key={issue.title} className="flex items-center justify-between py-5 border-b border-gray-200 gap-4">
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs uppercase tracking-wider truncate">{issue.title}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{issue.time}</div>
-                    </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 whitespace-nowrap ${issue.status === 'Pending' ? 'status-pending' : issue.status === 'In Progress' ? 'status-in-progress' : 'status-resolved'
-                      }`}>{issue.status}</span>
+                {isLoadingReports ? (
+                  <div className="py-12 text-center">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#D52E25] mb-2" />
+                    <p className="text-xs text-gray-400 uppercase tracking-widest">Loading reports...</p>
                   </div>
-                ))}
+                ) : recentReports.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-xs text-gray-400 uppercase tracking-widest">No reports yet</p>
+                  </div>
+                ) : (
+                  recentReports.map((issue: any) => {
+                    const statusLabel = issue.status === 'in-progress' ? 'In Progress' : issue.status.charAt(0).toUpperCase() + issue.status.slice(1);
+                    const statusClass = issue.status === 'pending' ? 'status-pending' : issue.status === 'in-progress' ? 'status-in-progress' : 'status-resolved';
+                    return (
+                      <div key={issue._id} className="flex items-center justify-between py-5 border-b border-gray-200 gap-4">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-xs uppercase tracking-wider truncate">
+                            {issue.category}{issue.address ? `, ${issue.address}` : ''}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">{formatTimeAgo(issue.createdAt)}</div>
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 whitespace-nowrap ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
               <Link to="/map" className="inline-flex items-center text-xs font-bold uppercase tracking-widest text-[#D52E25] mt-6 gap-2 hover:gap-3 transition-all">
                 View All Issues <ArrowRight className="w-4 h-4" />
@@ -208,7 +259,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* ═══════ BEST OFFERS → CTA ═══════ */}
+      {/* ═══════ CTA ═══════ */}
       <section className="bg-[#1C1C1C] text-white overflow-hidden">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 min-h-[50vh]">

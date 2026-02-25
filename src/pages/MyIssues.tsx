@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
 
 const fetchMyIssues = async () => {
-  const { data } = await api.get("/reports/my");
+  const { data } = await api.get("/reports/my-reports");
   return data.data;
 };
 

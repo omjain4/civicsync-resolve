@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useState, useMemo, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Loader2, ChevronRight } from "lucide-react";
+import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Loader2, X, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -12,39 +12,100 @@ const fetchReports = async () => {
     return data.data;
 };
 
-const createMarkerIcon = (status: string) => {
+const createMarkerIcon = (status: string, isSelected: boolean = false) => {
     const colors: Record<string, string> = { 'pending': '#f59e0b', 'in-progress': '#3b82f6', 'resolved': '#10b981' };
+    const bg = colors[status] || '#D52E25';
+    const size = isSelected ? 36 : 28;
+    const border = isSelected ? '4px solid #D52E25' : '3px solid white';
     return L.divIcon({
         className: '',
-        iconSize: [28, 28],
-        html: `<div style="width:28px;height:28px;background:${colors[status] || '#D52E25'};display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
+        iconSize: [size, size],
+        html: `<div style="width:${size}px;height:${size}px;background:${bg};display:flex;align-items:center;justify-content:center;border:${border};box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:all 0.2s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
     });
 };
 
-const statusConfig: Record<string, { class: string; icon: any }> = {
-    'pending': { class: 'status-pending', icon: Clock },
-    'in-progress': { class: 'status-in-progress', icon: AlertTriangle },
-    'resolved': { class: 'status-resolved', icon: CheckCircle },
+const statusConfig: Record<string, { class: string; icon: any; label: string }> = {
+    'pending': { class: 'status-pending', icon: Clock, label: 'Pending' },
+    'in-progress': { class: 'status-in-progress', icon: AlertTriangle, label: 'In Progress' },
+    'resolved': { class: 'status-resolved', icon: CheckCircle, label: 'Resolved' },
+};
+
+// Component to fly to a location on the map
+function FlyToMarker({ position }: { position: [number, number] | null }) {
+    const map = useMap();
+    if (position) {
+        map.flyTo(position, 14, { duration: 1 });
+    }
+    return null;
+}
+
+const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
 };
 
 export default function MapView() {
-    const [filter, setFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
     const [selectedIssue, setSelectedIssue] = useState<any>(null);
+    const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
     const { data: reports, isLoading } = useQuery({ queryKey: ["reports"], queryFn: fetchReports });
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
+    // Upvote uses PUT (matching backend route)
     const upvoteMutation = useMutation({
-        mutationFn: (id: string) => api.post(`/reports/${id}/upvote`),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["reports"] }); toast({ title: "Upvoted!" }); },
-        onError: (error: any) => toast({ title: "Could not upvote", description: error.response?.data?.message, variant: "destructive" }),
+        mutationFn: (id: string) => api.put(`/reports/${id}/upvote`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["reports"] });
+            toast({ title: "Upvoted!" });
+        },
+        onError: (error: any) => toast({
+            title: "Could not upvote",
+            description: error.response?.data?.message || "You may need to log in first.",
+            variant: "destructive"
+        }),
     });
 
+    // Get unique categories for filter
+    const categories = useMemo(() => {
+        if (!reports) return [];
+        const cats = [...new Set(reports.map((r: any) => r.category))].sort();
+        return cats as string[];
+    }, [reports]);
+
+    // Apply all filters
     const filteredReports = useMemo(() => {
         if (!reports) return [];
-        if (filter === "all") return reports;
-        return reports.filter((r: any) => r.status === filter);
-    }, [reports, filter]);
+        let filtered = reports;
+        if (statusFilter !== "all") {
+            filtered = filtered.filter((r: any) => r.status === statusFilter);
+        }
+        if (categoryFilter !== "all") {
+            filtered = filtered.filter((r: any) => r.category === categoryFilter);
+        }
+        return filtered;
+    }, [reports, statusFilter, categoryFilter]);
+
+    const handleSelectIssue = (report: any) => {
+        setSelectedIssue(report);
+        if (report.location?.coordinates) {
+            setFlyTo([report.location.coordinates[1], report.location.coordinates[0]]);
+        }
+    };
+
+    const handleCloseDetail = () => {
+        setSelectedIssue(null);
+        setFlyTo(null);
+    };
 
     return (
         <div className="min-h-screen bg-background animate-page-in">
@@ -55,20 +116,43 @@ export default function MapView() {
                         <p className="section-label mb-2">Civic Map</p>
                         <h1 className="display-md">Issue Map</h1>
                     </div>
+                    {/* Status filter */}
                     <div className="flex gap-0 border border-gray-300 bg-white">
                         {["all", "pending", "in-progress", "resolved"].map(f => (
-                            <button key={f} onClick={() => setFilter(f)}
-                                className={`px-4 py-2.5 text-[10px] uppercase tracking-widest font-semibold transition-colors border-r border-gray-300 last:border-r-0 ${filter === f ? 'bg-[#1C1C1C] text-white' : 'text-gray-500 hover:bg-gray-50'
+                            <button key={f} onClick={() => setStatusFilter(f)}
+                                className={`px-4 py-2.5 text-[10px] uppercase tracking-widest font-semibold transition-colors border-r border-gray-300 last:border-r-0 ${statusFilter === f ? 'bg-[#1C1C1C] text-white' : 'text-gray-500 hover:bg-gray-50'
                                     }`}
                             >{f === 'in-progress' ? 'Active' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
                         ))}
                     </div>
                 </div>
 
-                {/* Map + List grid */}
+                {/* Category filter */}
+                {categories.length > 0 && (
+                    <div className="mb-6 flex flex-wrap gap-2">
+                        <button
+                            onClick={() => setCategoryFilter("all")}
+                            className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === "all"
+                                    ? "bg-[#D52E25] text-white border-[#D52E25]"
+                                    : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
+                                }`}
+                        >All Categories</button>
+                        {categories.map(cat => (
+                            <button key={cat}
+                                onClick={() => setCategoryFilter(cat)}
+                                className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === cat
+                                        ? "bg-[#D52E25] text-white border-[#D52E25]"
+                                        : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
+                                    }`}
+                            >{cat}</button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Map + List + Detail grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-gray-200">
                     {/* Map */}
-                    <div className="lg:col-span-2 h-[400px] lg:h-[600px] border-b lg:border-b-0 lg:border-r border-gray-200">
+                    <div className={`${selectedIssue ? 'lg:col-span-1' : 'lg:col-span-2'} h-[400px] lg:h-[600px] border-b lg:border-b-0 lg:border-r border-gray-200 transition-all`}>
                         {isLoading ? (
                             <div className="h-full flex items-center justify-center bg-gray-100">
                                 <div className="text-center">
@@ -79,13 +163,14 @@ export default function MapView() {
                         ) : (
                             <MapContainer center={[20.5937, 78.9629]} zoom={5} className="h-full w-full z-10">
                                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
+                                <FlyToMarker position={flyTo} />
                                 {filteredReports
                                     .filter((r: any) => r.location?.coordinates)
                                     .map((report: any) => (
                                         <Marker key={report._id}
                                             position={[report.location.coordinates[1], report.location.coordinates[0]]}
-                                            icon={createMarkerIcon(report.status)}
-                                            eventHandlers={{ click: () => setSelectedIssue(report) }}
+                                            icon={createMarkerIcon(report.status, selectedIssue?._id === report._id)}
+                                            eventHandlers={{ click: () => handleSelectIssue(report) }}
                                         >
                                             <Popup>
                                                 <div className="p-1">
@@ -99,6 +184,68 @@ export default function MapView() {
                             </MapContainer>
                         )}
                     </div>
+
+                    {/* Detail panel — shown when an issue is selected */}
+                    {selectedIssue && (
+                        <div className="bg-white border-b lg:border-b-0 lg:border-r border-gray-200 overflow-y-auto max-h-[400px] lg:max-h-[600px]">
+                            <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                                <h2 className="text-xs font-bold uppercase tracking-widest">Issue Detail</h2>
+                                <button onClick={handleCloseDetail} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Image */}
+                            {selectedIssue.imageUrl && (
+                                <img src={selectedIssue.imageUrl} alt={selectedIssue.category} className="w-full h-48 object-cover" />
+                            )}
+
+                            <div className="p-5 space-y-4">
+                                <div>
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 ${statusConfig[selectedIssue.status]?.class || 'status-pending'}`}>
+                                        {statusConfig[selectedIssue.status]?.label || selectedIssue.status}
+                                    </span>
+                                </div>
+
+                                <h3 className="font-bold text-sm uppercase tracking-wider">{selectedIssue.category}</h3>
+
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex items-start gap-2">
+                                        <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                        <span className="text-gray-600">{selectedIssue.address}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                        <span className="text-gray-600">{formatTimeAgo(selectedIssue.createdAt)}</span>
+                                    </div>
+                                </div>
+
+                                {selectedIssue.description && (
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1">Description</p>
+                                        <p className="text-xs text-gray-600 leading-relaxed">{selectedIssue.description}</p>
+                                    </div>
+                                )}
+
+                                {selectedIssue.severity && (
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1">Severity</p>
+                                        <p className="text-xs font-semibold">Level {selectedIssue.severity}</p>
+                                    </div>
+                                )}
+
+                                {/* Upvote button */}
+                                <button
+                                    onClick={() => upvoteMutation.mutate(selectedIssue._id)}
+                                    disabled={upvoteMutation.isPending}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-300 text-xs font-bold uppercase tracking-widest hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25] transition-colors"
+                                >
+                                    <ThumbsUp className="w-3.5 h-3.5" />
+                                    Upvote ({Array.isArray(selectedIssue.upvotes) ? selectedIssue.upvotes.length : selectedIssue.upvotes || 0})
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Issue list panel */}
                     <div className="bg-white overflow-y-auto max-h-[400px] lg:max-h-[600px]">
@@ -117,7 +264,7 @@ export default function MapView() {
                                 return (
                                     <div key={report._id}
                                         className={`p-4 border-b border-gray-200 cursor-pointer transition-colors hover:bg-gray-50 ${selectedIssue?._id === report._id ? 'bg-gray-50 border-l-4 border-l-[#D52E25]' : ''}`}
-                                        onClick={() => setSelectedIssue(report)}
+                                        onClick={() => handleSelectIssue(report)}
                                     >
                                         <div className="flex items-start gap-3">
                                             {report.imageUrl ? (
@@ -138,7 +285,7 @@ export default function MapView() {
                                                         onClick={(e) => { e.stopPropagation(); upvoteMutation.mutate(report._id); }}
                                                         className="text-[10px] text-gray-400 hover:text-[#D52E25] flex items-center gap-1 transition-colors"
                                                     >
-                                                        <ThumbsUp className="w-3 h-3" /> {report.upvotes || 0}
+                                                        <ThumbsUp className="w-3 h-3" /> {Array.isArray(report.upvotes) ? report.upvotes.length : report.upvotes || 0}
                                                     </button>
                                                 </div>
                                             </div>
