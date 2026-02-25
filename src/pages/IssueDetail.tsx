@@ -120,9 +120,14 @@ export default function IssueDetail() {
         onMutate: async () => {
             await queryClient.cancelQueries({ queryKey: ["report", id] });
             const previous = queryClient.getQueryData(["report", id]);
-            queryClient.setQueryData(["report", id], (old: any) =>
-                old ? { ...old, upvotes: [...(old.upvotes || []), "optimistic"] } : old
-            );
+            queryClient.setQueryData(["report", id], (old: any) => {
+                if (!old) return old;
+                const hasUpvoted = old.upvotes?.includes(user?._id) || old.upvotes?.includes('optimistic');
+                const newUpvotes = hasUpvoted
+                    ? old.upvotes.filter((u: any) => u !== user?._id && u !== 'optimistic')
+                    : [...(old.upvotes || []), user?._id || "optimistic"];
+                return { ...old, upvotes: newUpvotes };
+            });
             return { previous };
         },
         onError: (err: any, _vars, context) => {
@@ -237,7 +242,10 @@ export default function IssueDetail() {
                         <button
                             onClick={() => upvoteMutation.mutate()}
                             disabled={upvoteMutation.isPending}
-                            className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 text-xs font-bold uppercase tracking-widest hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25] transition-colors"
+                            className={`flex items-center gap-1.5 px-4 py-2.5 border text-xs font-bold uppercase tracking-widest transition-colors ${report.upvotes?.includes(user?._id) || report.upvotes?.includes('optimistic')
+                                ? 'bg-[#D52E25] text-white border-[#D52E25]'
+                                : 'border-gray-300 text-gray-700 hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25]'
+                                }`}
                         >
                             <ThumbsUp className="w-3.5 h-3.5" />
                             {report.upvotes?.length || 0}

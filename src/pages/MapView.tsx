@@ -5,6 +5,8 @@ import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Loader2, X, Extern
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "leaflet/dist/leaflet.css";
 
 const fetchReports = async () => {
@@ -55,11 +57,17 @@ const formatTimeAgo = (dateString: string) => {
 export default function MapView() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
-    const [selectedIssue, setSelectedIssue] = useState<any>(null);
+    const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
     const { data: reports, isLoading } = useQuery({ queryKey: ["reports"], queryFn: fetchReports });
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { user } = useAuth();
+
+    const selectedIssue = useMemo(() => {
+        if (!reports || !selectedIssueId) return null;
+        return reports.find((r: any) => r._id === selectedIssueId) || null;
+    }, [reports, selectedIssueId]);
 
     // Upvote with optimistic update for instant feedback
     const upvoteMutation = useMutation({
@@ -68,7 +76,16 @@ export default function MapView() {
             await queryClient.cancelQueries({ queryKey: ["reports"] });
             const previous = queryClient.getQueryData(["reports"]);
             queryClient.setQueryData(["reports"], (old: any) =>
-                old?.map((r: any) => r._id === id ? { ...r, upvotes: [...(r.upvotes || []), "optimistic"] } : r)
+                old?.map((r: any) => {
+                    if (r._id === id) {
+                        const hasUpvoted = r.upvotes?.includes(user?._id) || r.upvotes?.includes('optimistic');
+                        const newUpvotes = hasUpvoted
+                            ? r.upvotes.filter((u: any) => u !== user?._id && u !== 'optimistic')
+                            : [...(r.upvotes || []), user?._id || "optimistic"];
+                        return { ...r, upvotes: newUpvotes };
+                    }
+                    return r;
+                })
             );
             return { previous };
         },
@@ -100,14 +117,14 @@ export default function MapView() {
     }, [reports, statusFilter, categoryFilter]);
 
     const handleSelectIssue = (report: any) => {
-        setSelectedIssue(report);
+        setSelectedIssueId(report._id);
         if (report.location?.coordinates) {
             setFlyTo([report.location.coordinates[1], report.location.coordinates[0]]);
         }
     };
 
     const handleCloseDetail = () => {
-        setSelectedIssue(null);
+        setSelectedIssueId(null);
         setFlyTo(null);
     };
 
@@ -131,25 +148,20 @@ export default function MapView() {
                     </div>
                 </div>
 
-                {/* Category filter */}
+                {/* Category filter Dropdown */}
                 {categories.length > 0 && (
-                    <div className="mb-6 flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setCategoryFilter("all")}
-                            className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === "all"
-                                ? "bg-[#D52E25] text-white border-[#D52E25]"
-                                : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
-                                }`}
-                        >All Categories</button>
-                        {categories.map(cat => (
-                            <button key={cat}
-                                onClick={() => setCategoryFilter(cat)}
-                                className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === cat
-                                    ? "bg-[#D52E25] text-white border-[#D52E25]"
-                                    : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
-                                    }`}
-                            >{cat}</button>
-                        ))}
+                    <div className="mb-6 w-full max-w-[280px]">
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="w-full bg-white border-gray-300 font-bold text-[10px] tracking-widest uppercase focus:ring-0 focus:border-[#D52E25]">
+                                <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all" className="font-bold text-[10px] tracking-widest uppercase cursor-pointer">All Categories</SelectItem>
+                                {categories.map(cat => (
+                                    <SelectItem key={cat} value={cat} className="font-bold text-[10px] tracking-widest uppercase cursor-pointer">{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 )}
 
@@ -242,7 +254,10 @@ export default function MapView() {
                                 <button
                                     onClick={() => upvoteMutation.mutate(selectedIssue._id)}
                                     disabled={upvoteMutation.isPending}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-300 text-xs font-bold uppercase tracking-widest hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25] transition-colors"
+                                    className={`w-full flex items-center justify-center gap-2 py-2.5 border text-xs font-bold uppercase tracking-widest transition-colors ${selectedIssue.upvotes?.includes(user?._id) || selectedIssue.upvotes?.includes('optimistic')
+                                        ? 'bg-[#D52E25] text-white border-[#D52E25]'
+                                        : 'border-gray-300 text-gray-700 hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25]'
+                                        }`}
                                 >
                                     <ThumbsUp className="w-3.5 h-3.5" />
                                     Upvote ({Array.isArray(selectedIssue.upvotes) ? selectedIssue.upvotes.length : selectedIssue.upvotes || 0})
@@ -287,7 +302,10 @@ export default function MapView() {
                                                     </span>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); upvoteMutation.mutate(report._id); }}
-                                                        className="text-[10px] text-gray-400 hover:text-[#D52E25] flex items-center gap-1 transition-colors"
+                                                        className={`text-[10px] flex items-center gap-1 transition-colors ${report.upvotes?.includes(user?._id) || report.upvotes?.includes('optimistic')
+                                                            ? 'text-[#D52E25]'
+                                                            : 'text-gray-400 hover:text-[#D52E25]'
+                                                            }`}
                                                     >
                                                         <ThumbsUp className="w-3 h-3" /> {Array.isArray(report.upvotes) ? report.upvotes.length : report.upvotes || 0}
                                                     </button>
