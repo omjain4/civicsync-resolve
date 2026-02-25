@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Eye, CheckCircle, Clock, AlertTriangle, FileText, Loader2, MapPin, MoreHorizontal, Building, Wrench, Trash2 } from "lucide-react";
+import { Eye, CheckCircle, Clock, AlertTriangle, FileText, Loader2, MapPin, MoreHorizontal, Building, Wrench, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import api from "../lib/api";
@@ -48,12 +48,45 @@ export default function AdminDashboard() {
   const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
   const [isAfterImageUploading, setIsAfterImageUploading] = useState(false);
   const [confirmState, setConfirmState] = useState<{ action: () => void; title: string; desc: string } | null>(null);
+  const [showOverlaps, setShowOverlaps] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: stats } = useQuery({ queryKey: ["reportStats"], queryFn: fetchReportStats });
   const { data: reports, isLoading: isLoadingReports } = useQuery({ queryKey: ["allReports"], queryFn: fetchAllReports });
+
+  // Compute overlapping/duplicate issue groups
+  const duplicateGroups = useMemo(() => {
+    if (!reports || reports.length < 2) return [];
+    const groups: { category: string; reports: any[] }[] = [];
+    const visited = new Set<string>();
+
+    for (let i = 0; i < reports.length; i++) {
+      if (visited.has(reports[i]._id)) continue;
+      const r = reports[i];
+      if (!r.location?.coordinates) continue;
+      const [lng, lat] = r.location.coordinates;
+      const cluster = [r];
+
+      for (let j = i + 1; j < reports.length; j++) {
+        if (visited.has(reports[j]._id)) continue;
+        const s = reports[j];
+        if (s.category !== r.category || !s.location?.coordinates) continue;
+        const [sLng, sLat] = s.location.coordinates;
+        const dist = Math.sqrt((sLng - lng) ** 2 + (sLat - lat) ** 2);
+        if (dist < 0.005) {
+          cluster.push(s);
+          visited.add(s._id);
+        }
+      }
+      if (cluster.length > 1) {
+        visited.add(r._id);
+        groups.push({ category: r.category, reports: cluster });
+      }
+    }
+    return groups;
+  }, [reports]);
 
   const mutationOptions = (successMessage: string) => ({
     onSuccess: () => {
@@ -163,6 +196,54 @@ export default function AdminDashboard() {
           <div className="p-5 border-r border-gray-200"><div className="flex items-center justify-between mb-3"><span className="text-xs font-semibold uppercase tracking-widest text-gray-500">In Progress</span><AlertTriangle className="h-4 w-4 text-blue-500" /></div><div className="text-3xl font-extrabold text-blue-500">{stats?.inProgress ?? 0}</div></div>
           <div className="p-5"><div className="flex items-center justify-between mb-3"><span className="text-xs font-semibold uppercase tracking-widest text-gray-500">Resolved</span><CheckCircle className="h-4 w-4 text-emerald-500" /></div><div className="text-3xl font-extrabold text-emerald-500">{stats?.resolved ?? 0}</div></div>
         </div>
+
+        {/* Overlap / Duplicate Issues Section */}
+        {duplicateGroups.length > 0 && (
+          <div className="bg-white border border-amber-300">
+            <button
+              onClick={() => setShowOverlaps(!showOverlaps)}
+              className="w-full flex items-center justify-between p-4 border-b border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-600" />
+                <h2 className="text-xs font-bold uppercase tracking-widest text-amber-800">
+                  Overlapping Issues Detected ({duplicateGroups.length} {duplicateGroups.length === 1 ? 'group' : 'groups'})
+                </h2>
+              </div>
+              {showOverlaps ? <ChevronUp className="w-4 h-4 text-amber-600" /> : <ChevronDown className="w-4 h-4 text-amber-600" />}
+            </button>
+            {showOverlaps && (
+              <div className="divide-y divide-amber-200">
+                {duplicateGroups.map((group, idx) => (
+                  <div key={idx} className="p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-3">
+                      {group.category} — {group.reports.length} similar reports nearby
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {group.reports.map((r: any) => (
+                        <div key={r._id} className="flex items-center gap-3 p-3 border border-amber-200 bg-amber-50/30 hover:bg-amber-50 transition-colors">
+                          {r.imageUrl ? (
+                            <img src={r.imageUrl} alt="" className="w-10 h-10 object-cover flex-shrink-0 border" />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 flex items-center justify-center flex-shrink-0 border">
+                              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold truncate">{r.address}</p>
+                            <p className="text-[9px] text-gray-400">
+                              {r.user?.email || 'Unknown user'} · <Badge variant="outline" className="text-[8px] px-1 py-0">{r.status}</Badge>
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-white border border-gray-200">
           <div className="p-4 border-b border-gray-200">

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import api from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // --- UPDATED USER INTERFACE ---
 interface User {
@@ -26,6 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -55,12 +56,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+  const handleSplashFinished = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  if (isLoading || showSplash) {
+    return <LoadingScreen onFinished={handleSplashFinished} />;
   }
 
   return (

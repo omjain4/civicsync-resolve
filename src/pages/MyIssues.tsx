@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, ArrowRight, ChevronRight } from "lucide-react";
@@ -18,6 +19,7 @@ const statusConfig: Record<string, { class: string; icon: any }> = {
 
 export default function MyIssues() {
   const [activeTab, setActiveTab] = useState("all");
+  const navigate = useNavigate();
   const { data: issues, isLoading } = useQuery({ queryKey: ["myIssues"], queryFn: fetchMyIssues });
 
   const tabs = ["all", "pending", "in-progress", "resolved"];
@@ -78,7 +80,7 @@ export default function MyIssues() {
               const config = statusConfig[issue.status] || statusConfig.pending;
               const StatusIcon = config.icon;
               return (
-                <div key={issue._id} className="flex items-center gap-4 py-5 border-b border-gray-200 bg-white px-4 hover:bg-gray-50 transition-colors cursor-pointer group">
+                <div key={issue._id} onClick={() => navigate(`/issues/${issue._id}`)} className="flex items-center gap-4 py-5 border-b border-gray-200 bg-white px-4 hover:bg-gray-50 transition-colors cursor-pointer group">
                   {issue.imageUrl ? (
                     <img src={issue.imageUrl} alt="" className="w-14 h-14 object-cover flex-shrink-0 border border-gray-200" />
                   ) : (

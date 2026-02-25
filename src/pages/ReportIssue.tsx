@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,9 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic, Sparkles } from "lucide-react";
+import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic, Sparkles, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -111,6 +111,23 @@ export default function ReportIssue() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Fetch all reports for duplicate detection
+  const { data: allReports } = useQuery({
+    queryKey: ["reports"],
+    queryFn: async () => (await api.get("/reports")).data.data,
+  });
+
+  // Compute nearby duplicates based on category + location
+  const nearbyDuplicates = useMemo(() => {
+    if (!allReports || !category || !location) return [];
+    return allReports.filter((r: any) => {
+      if (r.category !== category || !r.location?.coordinates) return false;
+      const [rLng, rLat] = r.location.coordinates;
+      const dist = Math.sqrt((rLng - location.lng) ** 2 + (rLat - location.lat) ** 2);
+      return dist < 0.005; // ~500m
+    });
+  }, [allReports, category, location]);
 
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -424,6 +441,20 @@ export default function ReportIssue() {
                 </Button>
               </div>
             </div>
+
+            {/* Duplicate detection banner */}
+            {nearbyDuplicates.length > 0 && (
+              <div className="bg-amber-50 border-2 border-amber-300 p-4 flex items-start gap-3 rounded-md">
+                <Users className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-amber-800 mb-1">Similar Issue Detected</p>
+                  <p className="text-xs text-amber-700">
+                    There {nearbyDuplicates.length === 1 ? 'is' : 'are'} already <strong>{nearbyDuplicates.length} similar {nearbyDuplicates.length === 1 ? 'report' : 'reports'}</strong> in this area.
+                    Your complaint will be registered collaboratively to help prioritize resolution.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );

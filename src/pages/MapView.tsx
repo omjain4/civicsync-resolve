@@ -61,18 +61,22 @@ export default function MapView() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    // Upvote uses PUT (matching backend route)
+    // Upvote with optimistic update for instant feedback
     const upvoteMutation = useMutation({
         mutationFn: (id: string) => api.put(`/reports/${id}/upvote`),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["reports"] });
-            toast({ title: "Upvoted!" });
+        onMutate: async (id: string) => {
+            await queryClient.cancelQueries({ queryKey: ["reports"] });
+            const previous = queryClient.getQueryData(["reports"]);
+            queryClient.setQueryData(["reports"], (old: any) =>
+                old?.map((r: any) => r._id === id ? { ...r, upvotes: [...(r.upvotes || []), "optimistic"] } : r)
+            );
+            return { previous };
         },
-        onError: (error: any) => toast({
-            title: "Could not upvote",
-            description: error.response?.data?.message || "You may need to log in first.",
-            variant: "destructive"
-        }),
+        onError: (error: any, _id, context) => {
+            queryClient.setQueryData(["reports"], context?.previous);
+            toast({ title: "Could not upvote", description: error.response?.data?.message || "You may need to log in first.", variant: "destructive" });
+        },
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ["reports"] }),
     });
 
     // Get unique categories for filter
@@ -133,16 +137,16 @@ export default function MapView() {
                         <button
                             onClick={() => setCategoryFilter("all")}
                             className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === "all"
-                                    ? "bg-[#D52E25] text-white border-[#D52E25]"
-                                    : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
+                                ? "bg-[#D52E25] text-white border-[#D52E25]"
+                                : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
                                 }`}
                         >All Categories</button>
                         {categories.map(cat => (
                             <button key={cat}
                                 onClick={() => setCategoryFilter(cat)}
                                 className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-semibold border transition-colors ${categoryFilter === cat
-                                        ? "bg-[#D52E25] text-white border-[#D52E25]"
-                                        : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
+                                    ? "bg-[#D52E25] text-white border-[#D52E25]"
+                                    : "bg-white text-gray-500 border-gray-300 hover:bg-gray-50"
                                     }`}
                             >{cat}</button>
                         ))}
