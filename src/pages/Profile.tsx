@@ -1,85 +1,70 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
-import { User, Mail, Phone, Calendar, LogOut, Edit, KeyRound } from "lucide-react";
+import { User, Mail, Phone, Calendar, LogOut, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Helper component for list items
 const ProfileDetailRow = ({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string }) => (
-  <li className="flex items-center justify-between py-4 border-b">
-    <div className="flex items-center gap-4">
-      <div className="text-muted-foreground">{icon}</div>
-      <span className="text-muted-foreground">{label}</span>
+  <div className="flex items-center gap-4 py-4 border-b border-gray-200 last:border-b-0">
+    <div className="text-gray-400 flex-shrink-0">{icon}</div>
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400">{label}</p>
+      <p className="font-semibold text-sm text-gray-900 truncate">{value || "Not available"}</p>
     </div>
-    <span className="font-semibold">{value || 'N/A'}</span>
-  </li>
+  </div>
 );
 
-export default function Profile() {
+const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) {
-    return <div>Loading profile...</div>;
-  }
-
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
-  const joinDate = 'Not available';
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto">
-          <Card className="shadow-lg border-t-4 border-primary">
-            <CardHeader className="text-center items-center gap-2 pt-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow">
-                {user.profilePhoto ? (
-                  <img
-                    src={user.profilePhoto}
-                    alt={user.username || 'User'}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-12 h-12 text-white" />
-                )}
-              </div>
-              <CardTitle className="text-3xl">{user.role === 'admin' ? 'Administrator' : 'Citizen Profile'}</CardTitle>
-              <p className="text-lg text-muted-foreground">{user.email}</p>
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="capitalize mt-2">
-                {user.role}
-              </Badge>
-            </CardHeader>
-            <CardContent className="px-8 py-6">
-              <ul className="space-y-2">
-                <ProfileDetailRow icon={<Mail className="w-5 h-5" />} label="Email Address" value={user.email} />
-                <ProfileDetailRow icon={<Phone className="w-5 h-5" />} label="Phone Number" value={user.phone} />
-                <ProfileDetailRow icon={<Calendar className="w-5 h-5" />} label="Member Since" value={joinDate} />
-              </ul>
-            </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 p-6 bg-slate-50 border-t">
-              <div className="flex gap-2">
-                <Button variant="outline" disabled>
-                  <Edit className="w-4 h-4 mr-2"/>
-                  Edit Profile
-                </Button>
-                 <Button variant="outline" disabled>
-                  <KeyRound className="w-4 h-4 mr-2"/>
-                  Change Password
-                </Button>
-              </div>
-              <Button onClick={handleLogout} variant="destructive">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </CardFooter>
-          </Card>
+    <div className="min-h-screen bg-background animate-page-in">
+      <div className="container mx-auto px-4 py-8 max-w-lg">
+        <p className="section-label mb-2">Account</p>
+        <h1 className="display-md mb-8">My Profile</h1>
+
+        <div className="ed-card bg-white">
+          <div className="text-center py-10 border-b border-gray-200">
+            <div className="w-24 h-24 overflow-hidden border-4 border-[#D52E25] mx-auto mb-4">
+              <img
+                src={user.profilePhoto || "/default-profile.png"}
+                alt={user.username}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h2 className="font-bold text-lg uppercase tracking-wider">{user.username}</h2>
+            <span className="text-[10px] font-bold uppercase tracking-widest bg-[#1C1C1C] text-white px-4 py-1.5 inline-block mt-2">
+              {user.role || 'citizen'}
+            </span>
+          </div>
+          <div className="px-6 pb-6">
+            <div>
+              <ProfileDetailRow icon={<User className="w-4 h-4" />} label="Username" value={user.username} />
+              <ProfileDetailRow icon={<Mail className="w-4 h-4" />} label="Email Address" value={user.email} />
+              <ProfileDetailRow icon={<Phone className="w-4 h-4" />} label="Phone Number" value={user.phone} />
+              <ProfileDetailRow icon={<Calendar className="w-4 h-4" />} label="Member Since" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : undefined} />
+              <ProfileDetailRow icon={<KeyRound className="w-4 h-4" />} label="Account Type" value={user.role?.charAt(0).toUpperCase() + user.role?.slice(1) || 'Citizen'} />
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <button onClick={handleLogout} className="btn-accent w-full flex items-center justify-center gap-2">
+                <LogOut className="w-4 h-4" /> Sign Out
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default Profile;

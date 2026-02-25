@@ -4,67 +4,40 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Mail, Phone, Lock, Camera, User } from "lucide-react";
+import { MapPin, Mail, Phone, Lock, Camera, User, Shield, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Layout } from "@/components/Layout";
 
-// Move LoginForm outside the main component to prevent re-creation
-const LoginForm = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleLogin, isLoading }) => (
-  <form onSubmit={handleLogin} className="space-y-4">
+const LoginForm = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword, handleLogin, isLoading }: any) => (
+  <form onSubmit={handleLogin} className="space-y-5">
     <div className="space-y-2">
-      <Label htmlFor="email">Email</Label>
+      <Label htmlFor="email" className="text-xs uppercase tracking-widest font-semibold text-gray-500">Email</Label>
       <div className="relative">
-        <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-        <Input 
-          id="email" 
-          type="email" 
-          placeholder="Enter your email" 
-          value={loginEmail} 
-          onChange={(e) => setLoginEmail(e.target.value)} 
-          required 
-          className="pl-10"
-          disabled={isLoading}
-        />
+        <Mail className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+        <Input id="email" type="email" placeholder="Enter your email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required className="pl-10 py-3" disabled={isLoading} />
       </div>
     </div>
     <div className="space-y-2">
-      <Label htmlFor="password">Password</Label>
+      <Label htmlFor="password" className="text-xs uppercase tracking-widest font-semibold text-gray-500">Password</Label>
       <div className="relative">
-        <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-        <Input 
-          id="password" 
-          type="password" 
-          placeholder="Enter your password" 
-          value={loginPassword} 
-          onChange={(e) => setLoginPassword(e.target.value)} 
-          required 
-          className="pl-10"
-          disabled={isLoading}
-        />
+        <Lock className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+        <Input id="password" type="password" placeholder="Enter your password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required className="pl-10 py-3" disabled={isLoading} />
       </div>
     </div>
-    <Button 
-      type="submit" 
-      className="w-full glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:scale-105 transition-all duration-500"
-      disabled={isLoading}
-    >
+    <button type="submit" className="btn-accent w-full" disabled={isLoading}>
       {isLoading ? "Signing In..." : "Sign In"}
-    </Button>
+    </button>
   </form>
 );
 
 function LoginPageContent() {
   const [activeTab, setActiveTab] = useState("login");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Shared state for both login forms
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-
-  // --- NEW STATE FOR SIGN UP ---
   const [signupUsername, setSignupUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
@@ -73,263 +46,142 @@ function LoginPageContent() {
   const [signupProfilePhoto, setSignupProfilePhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  
   const { toast } = useToast();
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Redirect based on user role
-      if (user.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/profile');
-      }
+      navigate(user.role === 'admin' ? '/admin' : '/profile');
     }
   }, [isAuthenticated, user, navigate]);
 
-  const handleLogin = useCallback(async (e) => {
-    e.preventDefault();
-    
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    
+  const handleLogin = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault(); if (isLoading) return; setIsLoading(true);
     try {
-      const response = await api.post('/auth/login', { 
-        email: loginEmail, 
-        password: loginPassword 
-      });
+      const response = await api.post('/auth/login', { email: loginEmail, password: loginPassword });
       const userData = response.data.user;
-      
       login(response.data.token, userData);
-      toast({ title: "Login Successful!", description: "Welcome back." });
-      
-      // Redirect based on user role
-      if (userData.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/profile');
-      }
-    } catch (error) {
-      toast({ 
-        title: "Login Failed", 
-        description: error.response?.data?.message || "Invalid credentials.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      toast({ title: "Login Successful!" });
+      navigate(userData.role === 'admin' ? '/admin' : '/profile');
+    } catch (error: any) {
+      toast({ title: "Login Failed", description: error.response?.data?.message || "Invalid credentials.", variant: "destructive" });
+    } finally { setIsLoading(false); }
   }, [loginEmail, loginPassword, login, toast, navigate, isLoading]);
 
-  // --- UPDATED SIGN UP HANDLER ---
   const handleSignup = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupPassword !== signupConfirmPassword) {
-      return toast({ title: "Password Mismatch", variant: "destructive" });
-    }
-    if (isLoading) return;
-    setIsLoading(true);
-    
+    if (signupPassword !== signupConfirmPassword) return toast({ title: "Password Mismatch", variant: "destructive" });
+    if (isLoading) return; setIsLoading(true);
     const formData = new FormData();
-    formData.append('username', signupUsername);
-    formData.append('email', signupEmail);
-    formData.append('phone', signupPhone);
-    formData.append('password', signupPassword);
-    if (signupProfilePhoto) {
-        formData.append('profilePhoto', signupProfilePhoto);
-    }
-    
+    formData.append('username', signupUsername); formData.append('email', signupEmail);
+    formData.append('phone', signupPhone); formData.append('password', signupPassword);
+    if (signupProfilePhoto) formData.append('profilePhoto', signupProfilePhoto);
     try {
-      const response = await api.post('/auth/register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const userData = response.data.user;
-      login(response.data.token, userData);
-      toast({ title: "Account Created!", description: "Welcome to CivicSync." });
-      navigate('/profile');
+      const response = await api.post('/auth/register', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      login(response.data.token, response.data.user);
+      toast({ title: "Account Created!" }); navigate('/profile');
     } catch (error: any) {
       toast({ title: "Signup Failed", description: error.response?.data?.message || "Could not create account.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   }, [signupUsername, signupEmail, signupPhone, signupPassword, signupConfirmPassword, signupProfilePhoto, login, toast, navigate, isLoading]);
 
-  // --- NEW PHOTO HANDLER ---
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSignupProfilePhoto(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
+    if (file) { setSignupProfilePhoto(file); setPhotoPreview(URL.createObjectURL(file)); }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 animate-fade-in">
-      <div className="container mx-auto px-4 py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-12 animate-slide-up">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-900 to-purple-700 bg-clip-text text-transparent mb-6">
-            Welcome to CivicSync
-          </h1>
-          <p className="text-xl text-blue-700 font-medium max-w-2xl mx-auto leading-relaxed">
-            Join thousands of citizens working together to improve their communities. 
-            Sign in to report issues or create your account to get started.
-          </p>
-        </div>
-
-        {/* Login Card */}
-        <div className="max-w-md mx-auto animate-scale-in">
-          <Card className="glass-card shadow-2xl">
-            <CardHeader className="text-center pb-8">
-              <CardTitle className="text-2xl font-bold text-blue-900 mb-2">Sign In to Your Account</CardTitle>
-              <CardDescription className="text-blue-600 font-medium">
-                Choose your account type below
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 glass p-1 rounded-2xl">
-                  <TabsTrigger value="login" className="glass-button transition-all duration-500">Citizen</TabsTrigger>
-                  <TabsTrigger value="admin-login" className="glass-button transition-all duration-500">Admin</TabsTrigger>
-                  <TabsTrigger value="signup" className="glass-button transition-all duration-500">Sign Up</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="login">
-                  <div className="space-y-4 pt-4">
-                    <LoginForm 
-                      loginEmail={loginEmail}
-                      setLoginEmail={setLoginEmail}
-                      loginPassword={loginPassword}
-                      setLoginPassword={setLoginPassword}
-                      handleLogin={handleLogin}
-                      isLoading={isLoading}
-                    />
-                    <div className="text-center text-sm text-muted-foreground">
-                      Don't have an account?{' '}
-                      <button 
-                        type="button"
-                        onClick={() => setActiveTab('signup')}
-                        className="text-primary hover:underline"
-                      >
-                        Sign up here
-                      </button>
-                    </div>
+    <div className="min-h-screen bg-[#F3F2EE] animate-page-in">
+      <div className="container mx-auto px-6 py-16 md:py-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 max-w-5xl mx-auto items-center">
+          {/* Left — branding */}
+          <div className="hidden md:block">
+            <p className="section-label mb-4">Secure Portal</p>
+            <h1 className="display-lg mb-6">
+              Welcome<br />
+              <span className="text-[#D52E25]">Back</span>
+            </h1>
+            <p className="text-xs uppercase tracking-wider text-gray-500 leading-relaxed max-w-sm">
+              Sign in to report civic issues, track your complaints, and help improve your community infrastructure.
+            </p>
+            <div className="mt-12 space-y-6">
+              {[
+                { icon: MapPin, title: "Easy Reporting", desc: "Report civic issues with automatic location" },
+                { icon: Mail, title: "Stay Updated", desc: "Get notifications on issue progress" },
+                { icon: Users, title: "Community Impact", desc: "Work together to improve your city" },
+              ].map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-[#D52E25] flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-white" />
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="admin-login">
-                  <div className="space-y-4 pt-4">
-                    <div className="bg-accent/50 border border-primary/20 rounded-lg p-3 mb-4">
-                      <p className="text-sm text-muted-foreground text-center">
-                        🔐 Administrator access only
-                      </p>
-                    </div>
-                    <LoginForm 
-                      loginEmail={loginEmail}
-                      setLoginEmail={setLoginEmail}
-                      loginPassword={loginPassword}
-                      setLoginPassword={setLoginPassword}
-                      handleLogin={handleLogin}
-                      isLoading={isLoading}
-                    />
+                  <div>
+                    <h3 className="font-bold text-xs uppercase tracking-wider">{title}</h3>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mt-0.5">{desc}</p>
                   </div>
-                </TabsContent>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                 <TabsContent value="signup" className="space-y-4 pt-4">
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div className="flex flex-col items-center space-y-2">
-                        <Label htmlFor="profilePhoto" className="cursor-pointer">
-                            <div className="w-24 h-24 rounded-full bg-slate-100 border flex items-center justify-center overflow-hidden hover:bg-slate-200 transition-colors">
-                                {photoPreview ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover"/> : <Camera className="w-8 h-8 text-slate-400"/>}
-                            </div>
-                        </Label>
-                        <input id="profilePhoto" type="file" ref={photoInputRef} accept="image/*" onChange={handlePhotoChange} className="hidden"/>
-                        <Button type="button" variant="link" size="sm" onClick={() => photoInputRef.current?.click()}>Add Profile Photo</Button>
-                    </div>
+          {/* Right — form */}
+          <div className="ed-card bg-white p-8 md:p-10">
+            <h2 className="font-bold text-xl uppercase tracking-wider mb-1">Sign In</h2>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-6">Choose your account type</p>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-username">Username</Label>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-100">
+                <TabsTrigger value="login" className="text-xs uppercase tracking-wider font-semibold">Citizen</TabsTrigger>
+                <TabsTrigger value="admin-login" className="text-xs uppercase tracking-wider font-semibold">Admin</TabsTrigger>
+                <TabsTrigger value="signup" className="text-xs uppercase tracking-wider font-semibold">Sign Up</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="login">
+                <LoginForm loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleLogin={handleLogin} isLoading={isLoading} />
+                <p className="text-center text-xs text-gray-400 mt-4 uppercase tracking-wider">
+                  No account? <button type="button" onClick={() => setActiveTab('signup')} className="text-[#D52E25] font-semibold hover:underline">Sign up</button>
+                </p>
+              </TabsContent>
+
+              <TabsContent value="admin-login">
+                <div className="bg-amber-50 border border-amber-200 p-3 mb-4">
+                  <p className="text-xs text-amber-800 text-center font-semibold uppercase tracking-wider">🔐 Administrator access only</p>
+                </div>
+                <LoginForm loginEmail={loginEmail} setLoginEmail={setLoginEmail} loginPassword={loginPassword} setLoginPassword={setLoginPassword} handleLogin={handleLogin} isLoading={isLoading} />
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="flex flex-col items-center space-y-2">
+                    <Label htmlFor="profilePhoto" className="cursor-pointer">
+                      <div className="w-20 h-20 bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden hover:border-[#D52E25] transition-colors">
+                        {photoPreview ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" /> : <Camera className="w-6 h-6 text-gray-400" />}
+                      </div>
+                    </Label>
+                    <input id="profilePhoto" type="file" ref={photoInputRef} accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                    <Button type="button" variant="link" size="sm" onClick={() => photoInputRef.current?.click()} className="text-xs uppercase tracking-wider">Add Photo</Button>
+                  </div>
+                  {[
+                    { id: "signup-username", label: "Username", icon: User, value: signupUsername, setter: setSignupUsername, type: "text", ph: "Choose a username" },
+                    { id: "signup-email", label: "Email", icon: Mail, value: signupEmail, setter: setSignupEmail, type: "email", ph: "Enter email" },
+                    { id: "phone", label: "Phone", icon: Phone, value: signupPhone, setter: setSignupPhone, type: "tel", ph: "Phone number" },
+                    { id: "signup-password", label: "Password", icon: Lock, value: signupPassword, setter: setSignupPassword, type: "password", ph: "Create password" },
+                    { id: "confirm-password", label: "Confirm Password", icon: Lock, value: signupConfirmPassword, setter: setSignupConfirmPassword, type: "password", ph: "Confirm password" },
+                  ].map(({ id, label, icon: Icon, value, setter, type, ph }) => (
+                    <div key={id} className="space-y-1.5">
+                      <Label htmlFor={id} className="text-xs uppercase tracking-widest font-semibold text-gray-500">{label}</Label>
                       <div className="relative">
-                        <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input id="signup-username" placeholder="Choose a username" value={signupUsername} onChange={(e) => setSignupUsername(e.target.value)} required className="pl-10" disabled={isLoading}/>
+                        <Icon className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+                        <Input id={id} type={type} placeholder={ph} value={value} onChange={(e) => setter(e.target.value)} required className="pl-10 py-3" disabled={isLoading} />
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input id="signup-email" type="email" placeholder="Enter your email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required className="pl-10" disabled={isLoading}/>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input id="phone" type="tel" placeholder="Enter your phone number" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} required className="pl-10" disabled={isLoading}/>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input id="signup-password" type="password" placeholder="Create a secure password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required className="pl-10" disabled={isLoading}/>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                        <Input id="confirm-password" type="password" placeholder="Confirm your password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} required className="pl-10" disabled={isLoading}/>
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full glass-button bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:scale-105 transition-all duration-500" disabled={isLoading}>
-                      {isLoading ? "Creating Account..." : "Create Account"}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Features Section */}
-        <div className="mt-16 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-8">Why Choose CivicSync?</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="text-center p-8 glass-card animate-scale-in hover:scale-105 transition-all duration-500">
-              <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center mx-auto mb-6 animate-float">
-                <MapPin className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-bold mb-3 text-blue-900">Easy Reporting</h3>
-              <p className="text-blue-700 font-medium">
-                Report civic issues with just a few clicks and automatic location detection
-              </p>
-            </Card>
-            <Card className="text-center p-6">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Stay Updated</h3>
-              <p className="text-sm text-muted-foreground">
-                Get notifications about the progress of your reported issues
-              </p>
-            </Card>
-            <Card className="text-center p-6">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-2">Community Impact</h3>
-              <p className="text-sm text-muted-foreground">
-                Work together with your neighbors to improve your community
-              </p>
-            </Card>
+                  ))}
+                  <button type="submit" className="btn-accent w-full" disabled={isLoading}>
+                    {isLoading ? "Creating Account..." : "Create Account"}
+                  </button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
@@ -337,11 +189,6 @@ function LoginPageContent() {
   );
 }
 
-// Main export with Layout wrapper
 export default function Login() {
-  return (
-    <Layout>
-      <LoginPageContent />
-    </Layout>
-  );
+  return <Layout><LoginPageContent /></Layout>;
 }
