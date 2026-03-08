@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Loader2, X, ExternalLink, MessageCircle } from "lucide-react";
+import { MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Loader2, X, ExternalLink, MessageCircle, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,8 @@ export default function MapView() {
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
     const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
+    const [commentText, setCommentText] = useState("");
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const { data: reports, isLoading } = useQuery({ queryKey: ["reports"], queryFn: fetchReports });
     const queryClient = useQueryClient();
     const { toast } = useToast();
@@ -95,6 +97,20 @@ export default function MapView() {
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: ["reports"] }),
     });
+
+    const handleAddComment = async () => {
+        if (!selectedIssue || !commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            await api.post(`/reports/${selectedIssue._id}/comment`, { text: commentText.trim() });
+            setCommentText("");
+            queryClient.invalidateQueries({ queryKey: ["reports"] });
+            toast({ title: "Comment added" });
+        } catch (err: any) {
+            toast({ title: "Failed to add comment", description: err.response?.data?.message, variant: "destructive" });
+        }
+        setIsSubmittingComment(false);
+    };
 
     // Get unique categories for filter
     const categories = useMemo(() => {
@@ -264,29 +280,49 @@ export default function MapView() {
                                 </button>
 
                                 {/* Comments */}
-                                {selectedIssue.comments && selectedIssue.comments.length > 0 && (
-                                    <div className="border-t border-gray-200 pt-3">
-                                        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-2 flex items-center gap-1">
-                                            <MessageCircle className="w-3 h-3" /> Comments ({selectedIssue.comments.length})
-                                        </p>
-                                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                                            {selectedIssue.comments.slice().reverse().map((c: any, i: number) => (
-                                                <div key={i} className="flex gap-2 p-2 bg-gray-50">
-                                                    <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
-                                                        {(c.user?.username || 'U')[0].toUpperCase()}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="text-[10px] font-bold">{c.user?.username || 'User'}</span>
-                                                            <span className="text-[9px] text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <p className="text-[11px] text-gray-600 mt-0.5">{c.text}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                <div className="border-t border-gray-200 pt-3">
+                                    <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-2 flex items-center gap-1">
+                                        <MessageCircle className="w-3 h-3" /> Comments ({selectedIssue.comments?.length || 0})
+                                    </p>
+                                    {user && (
+                                        <div className="flex gap-1.5 mb-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Write a comment..."
+                                                value={commentText}
+                                                onChange={e => setCommentText(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                                                className="flex-1 px-2 py-1.5 border border-gray-300 text-xs focus:outline-none focus:border-[#D52E25]"
+                                            />
+                                            <button
+                                                onClick={handleAddComment}
+                                                disabled={isSubmittingComment || !commentText.trim()}
+                                                className="px-2 py-1.5 bg-[#1C1C1C] text-white hover:bg-[#D52E25] transition-colors disabled:opacity-50"
+                                            >
+                                                {isSubmittingComment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                            </button>
                                         </div>
+                                    )}
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {(selectedIssue.comments || []).slice().reverse().map((c: any, i: number) => (
+                                            <div key={i} className="flex gap-2 p-2 bg-gray-50">
+                                                <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
+                                                    {(c.user?.username || 'U')[0].toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] font-bold">{c.user?.username || 'User'}</span>
+                                                        <span className="text-[9px] text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-600 mt-0.5">{c.text}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!selectedIssue.comments || selectedIssue.comments.length === 0) && (
+                                            <p className="text-center text-[10px] text-gray-400 py-3 uppercase tracking-widest">No comments yet</p>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     )}

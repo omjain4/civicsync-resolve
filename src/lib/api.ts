@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' ? 'https://civic-sih-backend.onrender.com' : 'http://localhost:5001/api', // Changed to local backend
+  baseURL: process.env.NODE_ENV === 'production' ? 'https://civic-sih-backend.onrender.com/api' : 'http://localhost:5001/api',
   headers: {
     'Content-Type': 'application/json',
   },
