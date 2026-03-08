@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     MapPin, Clock, CheckCircle, AlertTriangle, ThumbsUp, Trash2,
-    ImagePlus, ArrowLeft, Camera, Shield, ShieldAlert, ShieldCheck, Loader2, Users
+    ImagePlus, ArrowLeft, Camera, Shield, ShieldAlert, ShieldCheck, Loader2, Users, MessageCircle, Send
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -62,6 +62,8 @@ export default function IssueDetail() {
     const [imgMeta, setImgMeta] = useState<any>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [similarIssues, setSimilarIssues] = useState<Report[]>([]);
+    const [commentText, setCommentText] = useState("");
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
     const { data: report, isLoading, error } = useQuery<Report>({
         queryKey: ["report", id],
@@ -174,6 +176,20 @@ export default function IssueDetail() {
     const isAdmin = user?.role === "admin";
     const canDelete = isOwner || isAdmin;
     const canChangeImage = isOwner && report?.status === "pending";
+
+    const handleAddComment = async () => {
+        if (!report || !commentText.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            await api.post(`/reports/${id}/comment`, { text: commentText.trim() });
+            setCommentText("");
+            queryClient.invalidateQueries({ queryKey: ["report", id] });
+            toast({ title: "Comment added" });
+        } catch (err: any) {
+            toast({ title: "Failed to add comment", description: err.response?.data?.message, variant: "destructive" });
+        }
+        setIsSubmittingComment(false);
+    };
 
     if (isLoading) {
         return (
@@ -399,6 +415,54 @@ export default function IssueDetail() {
                             </div>
                         ) : (
                             <p className="text-[10px] text-gray-400">Loading metadata...</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Comments Section */}
+                <div className="border border-gray-200 mb-6">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            Comments ({report.comments?.length || 0})
+                        </h3>
+                    </div>
+                    {user && (
+                        <div className="p-4 border-b border-gray-200 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Write a comment..."
+                                value={commentText}
+                                onChange={e => setCommentText(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                                className="flex-1 px-3 py-2 border border-gray-300 text-xs focus:outline-none focus:border-[#D52E25]"
+                            />
+                            <button
+                                onClick={handleAddComment}
+                                disabled={isSubmittingComment || !commentText.trim()}
+                                className="px-3 py-2 bg-[#1C1C1C] text-white hover:bg-[#D52E25] transition-colors disabled:opacity-50"
+                            >
+                                {isSubmittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </button>
+                        </div>
+                    )}
+                    <div className="max-h-60 overflow-y-auto">
+                        {(report.comments || []).slice().reverse().map((c: any, i: number) => (
+                            <div key={i} className="p-4 border-b border-gray-200 last:border-b-0 flex gap-3">
+                                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                                    {(c.user?.username || 'U')[0].toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold">{c.user?.username || 'User'}</span>
+                                        <span className="text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-1">{c.text}</p>
+                                </div>
+                            </div>
+                        ))}
+                        {(!report.comments || report.comments.length === 0) && (
+                            <p className="text-center text-xs text-gray-400 py-6 uppercase tracking-widest">No comments yet</p>
                         )}
                     </div>
                 </div>
