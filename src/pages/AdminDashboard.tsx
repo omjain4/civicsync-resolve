@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Eye, CheckCircle, Clock, AlertTriangle, FileText, Loader2, MapPin, MoreHorizontal, Building, Wrench, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, CheckCircle, Clock, AlertTriangle, FileText, Loader2, MapPin, MoreHorizontal, Building, Wrench, Trash2, Users, ChevronDown, ChevronUp, MessageCircle, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import api from "../lib/api";
@@ -49,6 +49,8 @@ export default function AdminDashboard() {
   const [isAfterImageUploading, setIsAfterImageUploading] = useState(false);
   const [confirmState, setConfirmState] = useState<{ action: () => void; title: string; desc: string } | null>(null);
   const [showOverlaps, setShowOverlaps] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -153,6 +155,23 @@ export default function AdminDashboard() {
     setAfterImageFile(null);
   };
 
+  const handleAddComment = async () => {
+    if (!viewingReport || !commentText.trim()) return;
+    setIsSubmittingComment(true);
+    try {
+      await api.post(`/reports/${viewingReport._id}/comment`, { text: commentText.trim() });
+      setCommentText("");
+      queryClient.invalidateQueries({ queryKey: ["allReports"] });
+      // Refetch the report to update comments
+      const { data } = await api.get(`/reports/${viewingReport._id}`);
+      setViewingReport(data.data);
+      toast({ title: "Comment added" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Failed", description: error.response?.data?.message });
+    }
+    setIsSubmittingComment(false);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 animate-page-in">
       <div className="space-y-6">
@@ -175,6 +194,43 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {viewingReport?.imageUrl && <div><h4 className="font-semibold mb-2">Before</h4><img src={viewingReport.imageUrl} className="rounded-md w-full object-cover" /></div>}
                 {viewingReport?.afterImageUrl && <div><h4 className="font-semibold mb-2">After (Resolved)</h4><img src={viewingReport.afterImageUrl} className="rounded-md w-full object-cover" /></div>}
+              </div>
+              {/* Comments Section */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageCircle className="w-4 h-4" />
+                  <h4 className="text-xs font-bold uppercase tracking-widest">Comments ({viewingReport?.comments?.length || 0})</h4>
+                </div>
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    placeholder="Write a comment..."
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                  />
+                  <Button size="icon" onClick={handleAddComment} disabled={isSubmittingComment || !commentText.trim()}>
+                    {isSubmittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {(viewingReport?.comments || []).slice().reverse().map((c: any, i: number) => (
+                    <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-md">
+                      <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {(c.user?.username || 'U')[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold">{c.user?.username || 'User'}</span>
+                          <span className="text-[10px] text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm mt-1">{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!viewingReport?.comments || viewingReport.comments.length === 0) && (
+                    <p className="text-center text-sm text-gray-400 py-4">No comments yet</p>
+                  )}
+                </div>
               </div>
             </div>
           </DialogContent>
