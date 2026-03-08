@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic, Sparkles, Users } from "lucide-react";
+import { MapPin, Upload, Loader2, Camera, ChevronLeft, ChevronRight, Mic, Sparkles, Users, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -80,7 +80,7 @@ const createIssue = async (formData: FormData) => {
   const { data } = await api.post('/reports', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data.data;
+  return data; // Return full response (includes flagged, flagReasons, aiAnalysis)
 };
 
 export default function ReportIssue() {
@@ -186,9 +186,37 @@ export default function ReportIssue() {
 
   const mutation = useMutation({
     mutationFn: createIssue,
-    onSuccess: () => {
-      toast({ title: "Issue Reported Successfully!", description: "Your report has been submitted to the authorities." });
+    onSuccess: (responseData: any) => {
       queryClient.invalidateQueries({ queryKey: ['myIssues'] });
+
+      if (responseData.flagged) {
+        // Report was flagged by AI
+        toast({
+          title: "Report Submitted — Flagged for Review",
+          description: responseData.flagReasons?.join('. ') || "AI detected potential issues with this report.",
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Issue Reported Successfully!",
+          description: "Your report has been submitted and verified by AI.",
+        });
+      }
+
+      // Show AI analysis details
+      const ai = responseData.aiAnalysis;
+      if (ai?.descriptionMatch?.overallMatch === 'low') {
+        setTimeout(() => {
+          toast({
+            title: "AI Warning: Image Mismatch",
+            description: "The uploaded image does not appear to match your description. Your report has been flagged for manual review.",
+            variant: "destructive",
+            duration: 10000,
+          });
+        }, 1500);
+      }
+
       navigate('/my-issues');
     },
     onError: (error: any) => {

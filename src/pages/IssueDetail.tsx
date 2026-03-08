@@ -25,6 +25,19 @@ interface Report {
     upvotes: string[];
     assignedDepartment?: string;
     location?: { coordinates: number[] };
+    comments?: Array<{ user?: { _id: string; username?: string; email?: string; profilePhoto?: string }; text: string; createdAt: string }>;
+    aiFlags?: {
+        isFlagged: boolean;
+        flagReasons: string[];
+        descriptionMatchScore?: number;
+        descriptionMatchLevel?: string;
+        categoryMatch?: boolean;
+        locationVerified?: boolean;
+        locationDistance?: number;
+        imageTrust?: string;
+        isDuplicate?: boolean;
+        credibilityScore?: number;
+    };
 }
 
 const statusConfig: Record<string, { class: string; icon: any; label: string; color: string }> = {
@@ -294,6 +307,70 @@ export default function IssueDetail() {
                     </div>
                 )}
 
+                {/* AI Verification Banner */}
+                {report.aiFlags && (
+                    <div className={`border-2 p-4 mb-6 flex items-start gap-3 ${
+                        report.aiFlags.isFlagged
+                            ? 'bg-red-50 border-red-300'
+                            : 'bg-green-50 border-green-300'
+                    }`}>
+                        {report.aiFlags.isFlagged ? (
+                            <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                            <ShieldCheck className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${
+                                report.aiFlags.isFlagged ? 'text-red-800' : 'text-green-800'
+                            }`}>
+                                {report.aiFlags.isFlagged ? 'AI Flagged — Under Review' : 'AI Verified Report'}
+                            </p>
+                            {report.aiFlags.isFlagged && report.aiFlags.flagReasons?.length > 0 && (
+                                <ul className="text-xs text-red-700 space-y-0.5">
+                                    {report.aiFlags.flagReasons.map((reason: string, idx: number) => (
+                                        <li key={idx}>• {reason}</li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="flex items-center gap-4 mt-2 text-[10px] uppercase tracking-widest">
+                                {report.aiFlags.credibilityScore != null && (
+                                    <span className={`font-bold ${
+                                        report.aiFlags.credibilityScore >= 0.6 ? 'text-green-700' :
+                                        report.aiFlags.credibilityScore >= 0.3 ? 'text-amber-700' : 'text-red-700'
+                                    }`}>
+                                        Credibility: {Math.round(report.aiFlags.credibilityScore * 100)}%
+                                    </span>
+                                )}
+                                {report.aiFlags.descriptionMatchLevel && (
+                                    <span className="text-gray-500">
+                                        Image-Description Match: <strong>{report.aiFlags.descriptionMatchLevel}</strong>
+                                    </span>
+                                )}
+                                {report.aiFlags.locationVerified === true && (
+                                    <span className="text-green-700 font-bold">GPS Verified ✓</span>
+                                )}
+                                {report.aiFlags.locationVerified === false && report.aiFlags.locationDistance != null && (
+                                    <span className="text-red-700 font-bold">
+                                        📍 Image location mismatch ({report.aiFlags.locationDistance.toFixed(1)}km away)
+                                    </span>
+                                )}
+                                {report.aiFlags.imageTrust && report.aiFlags.imageTrust !== 'unknown' ? (
+                                    <span className={`font-bold ${
+                                        report.aiFlags.imageTrust === 'high' ? 'text-green-700' :
+                                        report.aiFlags.imageTrust === 'medium' ? 'text-amber-600' : 'text-red-700'
+                                    }`}>
+                                        {report.aiFlags.imageTrust === 'high' ? 'Metadata Verified ✓' :
+                                         report.aiFlags.imageTrust === 'medium' ? 'Metadata Partially Verified' :
+                                         'Metadata Trust Low'}
+                                    </span>
+                                ) : (
+                                    <span className="text-amber-600 font-bold">Metadata Cannot Be Verified</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Images section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border border-gray-200 mb-6">
                     {/* Before image */}
@@ -307,16 +384,6 @@ export default function IssueDetail() {
                             <div className="h-72 flex items-center justify-center">
                                 <Camera className="w-8 h-8 text-gray-300" />
                             </div>
-                        )}
-                        {canChangeImage && (
-                            <button
-                                onClick={handleImageChange}
-                                disabled={changeImageMutation.isPending}
-                                className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur text-[10px] font-bold uppercase tracking-widest border border-gray-300 hover:bg-[#D52E25] hover:text-white hover:border-[#D52E25] transition-colors"
-                            >
-                                <ImagePlus className="w-3 h-3" />
-                                {changeImageMutation.isPending ? "Uploading..." : "Change Image"}
-                            </button>
                         )}
                     </div>
 
