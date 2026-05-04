@@ -32,15 +32,23 @@ const issueCategories = [
   "Other"
 ];
 
-const geocodeAddress = async (address: string): Promise<{ lat: number, lng: number } | null> => {
+const geocodeAddress = async (address: string): Promise<{ lat: number, lng: number, locality: string, formattedAddress: string } | null> => {
   if (!address) return null;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-  const response = await fetch(url);
-  const results = await response.json();
-  if (results && results.length > 0) {
-    return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+  try {
+    const { data } = await api.post('/geocoding/geocode', { address });
+    if (data.success) {
+      return {
+        lat: data.data.coordinates.lat,
+        lng: data.data.coordinates.lng,
+        locality: data.data.locality,
+        formattedAddress: data.data.formattedAddress
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
   }
-  return null;
 };
 
 const isValidDataURL = (dataURL: string): boolean => {
@@ -323,11 +331,22 @@ export default function ReportIssue() {
     }
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
         setLocation({ lat: latitude, lng: longitude });
-        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-        toast({ title: "Location Acquired!", description: "Your current location has been captured." });
+
+        try {
+          const { data } = await api.post('/geocoding/reverse', { latitude, longitude });
+          if (data.success) {
+            setAddress(data.data.formattedAddress);
+            toast({ title: "Location Acquired!", description: "Your current location has been captured." });
+          } else {
+            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          }
+        } catch (e) {
+          setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        }
+        
         setIsGettingLocation(false);
       },
       (error) => {
@@ -457,10 +476,11 @@ export default function ReportIssue() {
                   {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={async () => {
-                  const coords = await geocodeAddress(address);
-                  if (coords) {
-                    setLocation(coords);
-                    toast({ title: "Address Located!", description: `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` });
+                  const result = await geocodeAddress(address);
+                  if (result) {
+                    setLocation({ lat: result.lat, lng: result.lng });
+                    setAddress(result.formattedAddress);
+                    toast({ title: "Address Located!", description: `${result.locality}` });
                   } else {
                     toast({ title: "Address Not Found", variant: "destructive" });
                   }

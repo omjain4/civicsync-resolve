@@ -2,8 +2,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BarChart3, TrendingUp, MapPin, Clock, Users, AlertCircle, Calendar, FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend } from "recharts";
+
+function HotspotItem({ lat, lng, count, idx }: { lat: number, lng: number, count: number, idx: number }) {
+  const [locality, setLocality] = useState(() => `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      api.post('/geocoding/reverse', { latitude: lat, longitude: lng })
+        .then(res => {
+          if (res.data.success) {
+            setLocality(res.data.data.formattedAddress);
+          }
+        })
+        .catch(() => {});
+    }, idx * 600);
+    return () => clearTimeout(timer);
+  }, [lat, lng, idx]);
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-800">{idx + 1}</div>
+        <div>
+          <span className="font-medium text-blue-900 capitalize">{locality}</span>
+          <span className="block text-xs text-muted-foreground">({count} reports)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Report {
   _id: string;
@@ -279,15 +308,7 @@ export default function Analytics() {
               {analytics.hotspots.length > 0 ? (
                 <div className="flex flex-col gap-3">
                   {analytics.hotspots.map((hotspot, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-800">{idx + 1}</div>
-                        <div>
-                          <span className="font-medium text-blue-900">{hotspot.lat.toFixed(4)}, {hotspot.lng.toFixed(4)}</span>
-                          <span className="block text-xs text-muted-foreground">({hotspot.count} reports)</span>
-                        </div>
-                      </div>
-                    </div>
+                      <HotspotItem key={idx} idx={idx} lat={hotspot.lat} lng={hotspot.lng} count={hotspot.count} />
                   ))}
                 </div>
               ) : (

@@ -194,7 +194,7 @@ export default function MapView() {
                             </div>
                         ) : (
                             <MapContainer center={[20.5937, 78.9629]} zoom={5} className="h-full w-full z-10">
-                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
+                                <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution="Google Maps" />
                                 <FlyToMarker position={flyTo} />
                                 {filteredReports
                                     .filter((r: any) => r.location?.coordinates)
